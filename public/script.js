@@ -42,6 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const authError = document.getElementById('auth-error');
     
     // Sidebar Elements
+    const sidebar = document.querySelector('.sidebar');
     const sidebarDashboard = document.getElementById('sidebar-dashboard');
     const sidebarAnalytics = document.getElementById('sidebar-analytics');
     const sidebarHistory = document.getElementById('sidebar-history');
@@ -52,6 +53,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const userInitialSidebar = document.getElementById('user-initial-sidebar');
     const pageTitle = document.getElementById('page-title');
     
+    // Mobile Nav
+    const menuButton = document.getElementById('menu-button');
+
     // Content Areas
     const dashboardContent = document.getElementById('dashboard-content');
     const analyticsContent = document.getElementById('analytics-content');
@@ -120,6 +124,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
         });
+        
+        // Mobile Menu Button
+        if (menuButton) {
+            menuButton.addEventListener('click', () => {
+                sidebar.classList.toggle('open');
+            });
+        }
+
 
         // Auth Event Listeners
         if (signinForm) {
@@ -380,48 +392,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (pageTitle) pageTitle.textContent = 'History';
                 break;
             case 'profile':
-                console.log('� Switching to profile page');
-                
-                // Force hide all other content
-                if (dashboardContent) {
-                    dashboardContent.style.display = 'none';
-                    console.log('✅ Dashboard hidden');
-                }
-                if (analyticsContent) {
-                    analyticsContent.style.display = 'none';
-                    console.log('✅ Analytics hidden');
-                }
-                if (historyContent) {
-                    historyContent.style.display = 'none';
-                    console.log('✅ History hidden');
-                }
-                
-                // Force show profile content
                 if (profileContent) {
                     profileContent.style.display = 'block';
                     loadProfileData(); // Load the profile form data
-                    
-                    // Refresh icons after content is visible
-                    setTimeout(() => {
-                        if (typeof lucide !== 'undefined') {
-                            lucide.createIcons();
-                            console.log('🔄 Refreshed Lucide icons for profile');
-                        }
-                    }, 100);
-                    
-                    console.log('✅ Profile page is now visible');
-                    
-                    console.log('✅ Profile content COMPLETELY REPLACED with test content');
-                    console.log('🔍 Profile element:', profileContent);
-                    console.log('� Profile innerHTML length:', profileContent.innerHTML.length);
-                    
-                } else {
-                    console.error('❌ Profile content element not found!');
                 }
-                
                 if (sidebarProfile) sidebarProfile.classList.add('active');
                 if (pageTitle) pageTitle.textContent = 'Profile';
                 break;
+        }
+        // FIX: Close sidebar on mobile after a selection is made
+        if (window.innerWidth <= 1024) {
+            sidebar.classList.remove('open');
         }
     }
 
@@ -472,6 +453,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const avgCaloriesEl = document.getElementById('avg-calories');
         const avgProteinEl = document.getElementById('avg-protein');
         const daysOnTrackEl = document.getElementById('days-on-track');
+        const currentStreakEl = document.getElementById('current-streak');
         
         if (avgCaloriesEl) {
             avgCaloriesEl.textContent = analyticsData.avgCalories;
@@ -485,6 +467,10 @@ document.addEventListener('DOMContentLoaded', () => {
             daysOnTrackEl.textContent = analyticsData.daysOnTrack;
             console.log('✅ Updated days on track:', analyticsData.daysOnTrack);
         }
+        if (currentStreakEl) {
+            currentStreakEl.textContent = analyticsData.streak;
+            console.log('✅ Updated current streak:', analyticsData.streak);
+        }
         
         // Try to create charts if Chart.js is available
         if (typeof Chart !== 'undefined') {
@@ -492,7 +478,7 @@ document.addEventListener('DOMContentLoaded', () => {
             createCalorieChart(analyticsData.weeklyCalories);
             createProteinChart(analyticsData.weeklyProtein);
             createMacroChart(analyticsData.macros);
-            createGoalsChart(analyticsData);
+            createGoalsChart();
         } else {
             console.log('⚠️ Chart.js not available - showing calculated data instead');
         }
@@ -502,12 +488,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function calculateAnalyticsFromHistory(history) {
         const today = new Date();
-        const weekAgo = new Date(today);
-        weekAgo.setDate(today.getDate() - 6); // Last 7 days including today
-        
-        // Get current week data (Monday to Sunday)
+        const todayStr = today.toLocaleDateString();
+
+        const combinedData = { ...history };
+        if (dailyData && dailyData.date === todayStr) {
+            combinedData[todayStr] = dailyData;
+        }
+
         const weekDates = getThisWeekDates();
-        const weeklyData = [];
         const weeklyCalories = [];
         const weeklyProtein = [];
         
@@ -518,13 +506,11 @@ document.addEventListener('DOMContentLoaded', () => {
         let daysWithData = 0;
         let daysOnTrack = 0;
         
-        // Process this week's data
         weekDates.forEach(date => {
             const dateStr = date.toLocaleDateString();
-            const dayData = history[dateStr];
+            const dayData = combinedData[dateStr];
             
-            if (dayData) {
-                weeklyData.push(dayData);
+            if (dayData && dayData.totals.calories > 0) {
                 weeklyCalories.push(dayData.totals.calories || 0);
                 weeklyProtein.push(dayData.totals.protein || 0);
                 
@@ -534,11 +520,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 totalFat += dayData.totals.fat || 0;
                 daysWithData++;
                 
-                // Check if day was on track (within 200 calories of goal)
                 const calorieGoal = dayData.goals?.calories || 2000;
-                const proteinGoal = dayData.goals?.protein || 120;
-                if (Math.abs((dayData.totals.calories || 0) - calorieGoal) <= 200 && 
-                    (dayData.totals.protein || 0) >= proteinGoal * 0.8) {
+                if (Math.abs((dayData.totals.calories || 0) - calorieGoal) <= 200) {
                     daysOnTrack++;
                 }
             } else {
@@ -547,46 +530,43 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
         
-        // Include today's data if available
-        if (dailyData && dailyData.date === today.toLocaleDateString()) {
-            const todayCalories = dailyData.totals.calories || 0;
-            const todayProtein = dailyData.totals.protein || 0;
-            
-            // Update today's data in weekly arrays
-            const todayIndex = weekDates.findIndex(date => 
-                date.toLocaleDateString() === dailyData.date
-            );
-            if (todayIndex !== -1) {
-                weeklyCalories[todayIndex] = todayCalories;
-                weeklyProtein[todayIndex] = todayProtein;
-                
-                // Update totals
-                totalCalories += todayCalories;
-                totalProtein += todayProtein;
-                totalCarbs += dailyData.totals.carbs || 0;
-                totalFat += dailyData.totals.fat || 0;
-                daysWithData++;
-                
-                // Check if today is on track
-                const calorieGoal = dailyData.goals?.calories || 2000;
-                const proteinGoal = dailyData.goals?.protein || 120;
-                if (Math.abs(todayCalories - calorieGoal) <= 200 && todayProtein >= proteinGoal * 0.8) {
-                    daysOnTrack++;
-                }
-            }
-        }
-        
-        // Calculate averages
         const avgCalories = daysWithData > 0 ? Math.round(totalCalories / daysWithData) : 0;
         const avgProtein = daysWithData > 0 ? Math.round(totalProtein / daysWithData) : 0;
         
-        // Calculate macro percentages
         const totalMacroCalories = totalCarbs * 4 + totalProtein * 4 + totalFat * 9;
         const macros = totalMacroCalories > 0 ? {
             carbs: Math.round((totalCarbs * 4 / totalMacroCalories) * 100),
             protein: Math.round((totalProtein * 4 / totalMacroCalories) * 100),
             fat: Math.round((totalFat * 9 / totalMacroCalories) * 100)
-        } : { carbs: 50, protein: 25, fat: 25 };
+        } : { carbs: 0, protein: 0, fat: 0 };
+        
+        let currentStreak = 0;
+        const todayDate = new Date();
+        todayDate.setHours(0, 0, 0, 0);
+
+        for (let i = 0; i < 365; i++) { 
+            const dateToCheck = new Date(todayDate);
+            dateToCheck.setDate(todayDate.getDate() - i);
+            const dateStr = dateToCheck.toLocaleDateString();
+
+            const dayData = combinedData[dateStr];
+
+            if (dayData && dayData.totals && dayData.totals.calories > 0) {
+                const calorieGoal = dayData.goals?.calories || 2000;
+                
+                const onTrack = Math.abs(dayData.totals.calories - calorieGoal) <= 200;
+
+                if (onTrack) {
+                    currentStreak++;
+                } else {
+                    break;
+                }
+            } else {
+                 if (i > 0) { // Allow streak to start today even if yesterday is missing
+                    break;
+                 }
+            }
+        }
         
         return {
             avgCalories,
@@ -595,7 +575,8 @@ document.addEventListener('DOMContentLoaded', () => {
             weeklyCalories,
             weeklyProtein,
             macros,
-            daysWithData
+            daysWithData,
+            streak: currentStreak
         };
     }
 
@@ -617,11 +598,10 @@ document.addEventListener('DOMContentLoaded', () => {
         return weekDates;
     }
 
-    function createCalorieChart(data = [1650, 1890, 1750, 2100, 1847, 1920, 1780]) {
+    function createCalorieChart(data = []) {
         const ctx = document.getElementById('calorie-chart');
         if (!ctx) return;
         
-        // Destroy existing chart if it exists
         if (window.calorieChart) {
             window.calorieChart.destroy();
         }
@@ -643,19 +623,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 responsive: true,
                 scales: {
                     y: {
-                        beginAtZero: true,
-                        max: 2500
+                        beginAtZero: true
                     }
                 }
             }
         });
     }
 
-    function createProteinChart(data = [85, 102, 88, 115, 95, 108, 92]) {
+    function createProteinChart(data = []) {
         const ctx = document.getElementById('protein-chart');
         if (!ctx) return;
         
-        // Destroy existing chart if it exists
         if (window.proteinChart) {
             window.proteinChart.destroy();
         }
@@ -676,19 +654,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 responsive: true,
                 scales: {
                     y: {
-                        beginAtZero: true,
-                        max: 150
+                        beginAtZero: true
                     }
                 }
             }
         });
     }
 
-    function createMacroChart(macros = {carbs: 40, protein: 30, fat: 30}) {
+    function createMacroChart(macros = {carbs: 0, protein: 0, fat: 0}) {
         const ctx = document.getElementById('macro-chart');
         if (!ctx) return;
         
-        // Destroy existing chart if it exists
         if (window.macroChart) {
             window.macroChart.destroy();
         }
@@ -715,16 +691,14 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function createGoalsChart(analyticsData) {
+    function createGoalsChart() {
         const ctx = document.getElementById('goals-chart');
         if (!ctx) return;
         
-        // Destroy existing chart if it exists
         if (window.goalsChart) {
             window.goalsChart.destroy();
         }
         
-        // Calculate goal achievement percentages from real data
         const goalData = calculateGoalAchievement();
         
         window.goalsChart = new Chart(ctx, {
@@ -773,15 +747,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function calculateGoalAchievement() {
+        const todayStr = new Date().toLocaleDateString();
         const history = getNutritionHistory();
+        const combinedData = { ...history };
+        if (dailyData && dailyData.date === todayStr) {
+            combinedData[todayStr] = dailyData;
+        }
+
         const weekDates = getThisWeekDates();
         const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
         const calorieGoalAchieved = [];
         const proteinGoalAchieved = [];
         
-        weekDates.forEach((date, index) => {
+        weekDates.forEach((date) => {
             const dateStr = date.toLocaleDateString();
-            const dayData = history[dateStr];
+            const dayData = combinedData[dateStr];
             
             let caloriePercent = 0;
             let proteinPercent = 0;
@@ -790,17 +770,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const calorieGoal = dayData.goals?.calories || 2000;
                 const proteinGoal = dayData.goals?.protein || 120;
                 
-                caloriePercent = Math.round(((dayData.totals.calories || 0) / calorieGoal) * 100);
-                proteinPercent = Math.round(((dayData.totals.protein || 0) / proteinGoal) * 100);
-            }
-            
-            // Include today's data if it's the current day
-            if (dailyData && dailyData.date === dateStr) {
-                const calorieGoal = dailyData.goals?.calories || 2000;
-                const proteinGoal = dailyData.goals?.protein || 120;
-                
-                caloriePercent = Math.round(((dailyData.totals.calories || 0) / calorieGoal) * 100);
-                proteinPercent = Math.round(((dailyData.totals.protein || 0) / proteinGoal) * 100);
+                if(calorieGoal > 0) caloriePercent = Math.round(((dayData.totals.calories || 0) / calorieGoal) * 100);
+                if(proteinGoal > 0) proteinPercent = Math.round(((dayData.totals.protein || 0) / proteinGoal) * 100);
             }
             
             calorieGoalAchieved.push(caloriePercent);
@@ -2941,10 +2912,5 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     }
-
-    // --- Tab Switching Function ---
-    // --- Tab Switching Function ---
-
-
-
 });
+

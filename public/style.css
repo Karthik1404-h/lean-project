@@ -504,6 +504,10 @@ h4 { font-size: var(--font-size-xl); }
     gap: var(--spacing-md);
 }
 
+.menu-button {
+    display: none;
+}
+
 /* Profile Content */
 #profile-content {
     padding: var(--spacing-xl);
@@ -563,6 +567,10 @@ h4 { font-size: var(--font-size-xl); }
     .main-content {
         margin-left: 0;
     }
+    .menu-button {
+        display: block;
+    }
+
 }
 
 @media (max-width: 768px) {
