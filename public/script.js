@@ -1,5 +1,13 @@
-// 💻 script.js (Complete and Final Version)
+// 💻 script.js (Clean Version)
 document.addEventListener('DOMContentLoaded', () => {
+    // Initialize Lucide icons
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+        console.log('✅ Lucide icons initialized');
+    } else {
+        console.warn('⚠️ Lucide library not loaded');
+    }
+    
     // --- DOM Elements ---
     const canvas = document.getElementById('canvas');
     const totalCaloriesEl = document.getElementById('total-calories');
@@ -18,52 +26,87 @@ document.addEventListener('DOMContentLoaded', () => {
     const mealEntryTitle = document.getElementById('meal-entry-title');
     const modalCloseButtons = document.querySelectorAll('.modal-close-btn');
 
+    // Intro Page Elements
+    const introPage = document.getElementById('intro-page');
+    const mainApp = document.getElementById('main-app');
+    const introSigninBtn = document.getElementById('intro-signin-btn');
+    const heroSigninBtn = document.getElementById('hero-signin-btn');
+    const heroSignupBtn = document.getElementById('hero-signup-btn');
+
+    // Auth Elements
+    const authModal = document.getElementById('auth-modal');
+    const signinForm = document.getElementById('signin-form');
+    const signupForm = document.getElementById('signup-form');
+    const showSignupLink = document.getElementById('show-signup');
+    const showSigninLink = document.getElementById('show-signin');
+    const authError = document.getElementById('auth-error');
+    
+    // Sidebar Elements
+    const sidebarDashboard = document.getElementById('sidebar-dashboard');
+    const sidebarAnalytics = document.getElementById('sidebar-analytics');
+    const sidebarHistory = document.getElementById('sidebar-history');
+    const sidebarProfile = document.getElementById('sidebar-profile');
+    const sidebarSignout = document.getElementById('sidebar-signout');
+    const userNameSidebar = document.getElementById('user-name-sidebar');
+    const userEmailSidebar = document.getElementById('user-email-sidebar');
+    const userInitialSidebar = document.getElementById('user-initial-sidebar');
+    const pageTitle = document.getElementById('page-title');
+    
+    // Content Areas
+    const dashboardContent = document.getElementById('dashboard-content');
+    const analyticsContent = document.getElementById('analytics-content');
+    const historyContent = document.getElementById('history-content');
+    const profileContent = document.getElementById('profile-content');
+
     // --- State Variables ---
     let activeStream = null;
     let scanningInterval = null;
     let currentMealType = null;
+    let currentUser = null;
+    let currentImageBase64 = null;
     let dailyData = {
         date: new Date().toLocaleDateString(),
         meals: { breakfast: [], lunch: [], dinner: [], snacks: [] },
         totals: { calories: 0, protein: 0, carbs: 0, fat: 0 },
         goals: { calories: 2000, protein: 120 }
     };
-    let currentImageBase64 = null;
 
     // --- Initialization ---
+    initializeFirebase();
     loadDailyData();
     updateDashboard();
     renderAllMeals();
+    generateAnalytics(); // Generate analytics with real data
     initializeEventListeners(); // Initialize all event listeners
 
     // --- Functions ---
     
-    function initializeEventListeners() {
-        // REMOVED the old listener on the entire header
-        // NEW listener for ONLY the '+' buttons
-        document.querySelectorAll('.add-meal-item-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                currentMealType = btn.dataset.meal;
-                const mealName = currentMealType.charAt(0).toUpperCase() + currentMealType.slice(1);
-                mealEntryTitle.textContent = `Add to ${mealName}`;
-                openInputContainer(currentMealType);
-                mealEntryModal.classList.remove('hidden');
+    function initializeFirebase() {
+        console.log('🔧 Initializing Firebase...');
+        if (window.firebaseReady) {
+            console.log('✅ Firebase ready, setting up auth listener');
+            setupAuthStateListener();
+        } else {
+            console.log('⏳ Waiting for Firebase to be ready...');
+            window.addEventListener('firebaseReady', () => {
+                console.log('✅ Firebase ready event received, setting up auth listener');
+                setupAuthStateListener();
             });
-        });
-
-        document.getElementById('edit-goals-btn').addEventListener('click', () => goalModal.classList.remove('hidden'));
-        document.getElementById('save-goals-btn').addEventListener('click', updateGoals);
-        
-        modalCloseButtons.forEach(btn => {
-            btn.addEventListener('click', () => {
-                const modalId = btn.getAttribute('data-modal-id');
-                document.getElementById(modalId).classList.add('hidden');
-                if (modalId === 'meal-entry-modal') {
-                    closeInputContainer(); 
+        }
+    }
+    function initializeEventListeners() {
+        // Add meal buttons
+        document.querySelectorAll('.add-meal-item-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const mealType = btn.dataset.meal;
+                if (mealType) {
+                    openMealEntry(mealType);
                 }
             });
         });
 
+        // Meal delete buttons
         document.querySelectorAll('.meal-delete-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation(); 
@@ -77,42 +120,1401 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
         });
+
+        // Auth Event Listeners
+        if (signinForm) {
+            signinForm.addEventListener('submit', handleSignIn);
+        }
+
+        if (signupForm) {
+            signupForm.addEventListener('submit', handleSignUp);
+        }
+
+        if (showSignupLink) {
+            showSignupLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                showSignUpForm();
+            });
+        }
+
+        if (showSigninLink) {
+            showSigninLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                showSignInForm();
+            });
+        }
+
+        // Intro Page Event Listeners
+        if (introSigninBtn) {
+            introSigninBtn.addEventListener('click', () => {
+                showAuthModal('signin');
+            });
+        }
+        
+        if (heroSigninBtn) {
+            heroSigninBtn.addEventListener('click', () => {
+                showAuthModal('signin');
+            });
+        }
+        
+        if (heroSignupBtn) {
+            heroSignupBtn.addEventListener('click', () => {
+                showAuthModal('signup');
+            });
+        }
+
+        // Sidebar Navigation Event Listeners
+        if (sidebarDashboard) {
+            sidebarDashboard.addEventListener('click', () => {
+                switchSidebarTab('dashboard');
+            });
+        }
+        
+        if (sidebarAnalytics) {
+            sidebarAnalytics.addEventListener('click', () => {
+                switchSidebarTab('analytics');
+            });
+        }
+        
+        if (sidebarHistory) {
+            sidebarHistory.addEventListener('click', () => {
+                switchSidebarTab('history');
+            });
+        }
+        
+        if (sidebarProfile) {
+            sidebarProfile.addEventListener('click', () => {
+                switchSidebarTab('profile');
+            });
+        }
+        
+        if (sidebarSignout) {
+            sidebarSignout.addEventListener('click', () => {
+                console.log('Sidebar signout button clicked');
+                signOutUser();
+            });
+        }
+
+        // Edit Goals Button (moved from sidebar to dashboard)
+        const editGoalsBtn = document.getElementById('edit-goals-btn');
+        const saveGoalsBtn = document.getElementById('save-goals-btn');
+
+        if (editGoalsBtn) {
+            editGoalsBtn.addEventListener('click', () => {
+                openModal('goal-modal');
+            });
+        }
+
+        if (saveGoalsBtn) {
+            saveGoalsBtn.addEventListener('click', () => {
+                saveGoals();
+                closeModal('goal-modal');
+            });
+        }
+
+        // Modal close buttons
+        modalCloseButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const modalId = btn.dataset.modalId;
+                if (modalId) {
+                    closeModal(modalId);
+                    if (modalId === 'meal-entry-modal') {
+                        closeInputContainer(); 
+                    }
+                }
+            });
+        });
+
+        // Click outside to close modals
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal-overlay')) {
+                e.target.classList.add('hidden');
+            }
+        });
+    }
+
+    // --- Authentication Functions ---
+    function setupAuthStateListener() {
+        if (!window.firebaseAuth) {
+            console.error('❌ Firebase Auth not available');
+            return;
+        }
+
+        console.log('🎯 Setting up auth state listener');
+        window.firebaseAuth.onAuthStateChanged(window.firebaseAuth.auth, async (user) => {
+            console.log('🔄 Auth state changed:', user ? `signed in as ${user.email}` : 'signed out');
+            currentUser = user;
+            updateAuthUI(user);
+            
+            if (user) {
+                console.log('👤 User authenticated, switching to main app');
+                // User is signed in, show main app and hide intro page
+                if (introPage) {
+                    introPage.classList.add('hidden');
+                    console.log('🔄 Intro page hidden');
+                }
+                if (mainApp) {
+                    mainApp.classList.remove('hidden');
+                    console.log('🔄 Main app shown');
+                    
+                    // Re-initialize Lucide icons for newly visible elements
+                    if (typeof lucide !== 'undefined') {
+                        setTimeout(() => {
+                            lucide.createIcons();
+                            console.log('🔄 Lucide icons re-initialized for main app');
+                        }, 100);
+                    }
+                }
+                
+                // Update sidebar user info
+                updateSidebarUserInfo(user);
+                
+                // Load user data and update dashboard
+                await loadUserDataFromFirestore();
+                updateDashboard();
+                renderAllMeals();
+                
+                // Initialize with dashboard view only if no page is currently active
+                const currentActivePage = document.querySelector('#dashboard-content[style*="block"], #analytics-content[style*="block"], #profile-content[style*="block"]');
+                if (!currentActivePage) {
+                    switchSidebarTab('dashboard');
+                }
+            } else {
+                console.log('🚪 User signed out, switching to intro page');
+                // User is signed out, show intro page and hide main app
+                if (introPage) {
+                    introPage.classList.remove('hidden');
+                    console.log('🔄 Intro page shown');
+                }
+                if (mainApp) {
+                    mainApp.classList.add('hidden');
+                    console.log('🔄 Main app hidden');
+                }
+                
+                // Reset to default data
+                dailyData = {
+                    date: new Date().toLocaleDateString(),
+                    meals: { breakfast: [], lunch: [], dinner: [], snacks: [] },
+                    totals: { calories: 0, protein: 0, carbs: 0, fat: 0 },
+                    goals: { calories: 2000, protein: 120 }
+                };
+                loadDailyData();
+                updateDashboard();
+                renderAllMeals();
+            }
+        });
+    }
+
+    function updateAuthUI(user) {
+        // Update any auth-related UI elements
+        console.log('Updating auth UI for user:', user?.email || 'none');
+    }
+
+    // --- New Functions for Intro Page and Sidebar ---
+    function showAuthModal(mode = 'signin') {
+        console.log('🔄 Opening auth modal in mode:', mode);
+        if (!authModal) {
+            console.error('❌ Auth modal not found');
+            return;
+        }
+        
+        if (authError) authError.textContent = '';
+        
+        if (mode === 'signup') {
+            showSignUpForm();
+        } else {
+            showSignInForm();
+        }
+        
+        authModal.classList.remove('hidden');
+        console.log('✅ Auth modal opened');
+    }
+
+    function updateSidebarUserInfo(user) {
+        if (!user) return;
+        
+        console.log('🔄 Updating sidebar user info for:', user.email);
+        const email = user.email;
+        const name = user.displayName || email.split('@')[0];
+        const initial = name.charAt(0).toUpperCase();
+        
+        if (userInitialSidebar) userInitialSidebar.textContent = initial;
+        if (userNameSidebar) userNameSidebar.textContent = name;
+        if (userEmailSidebar) userEmailSidebar.textContent = email;
+    }
+
+    function switchSidebarTab(tab) {
+        console.log('🔄 Switching to tab:', tab);
+        
+        // Remove active class from all sidebar items
+        const sidebarItems = document.querySelectorAll('.sidebar-item');
+        sidebarItems.forEach(item => item.classList.remove('active'));
+        
+        // Hide all content areas
+        if (dashboardContent) dashboardContent.style.display = 'none';
+        if (analyticsContent) analyticsContent.style.display = 'none';
+        if (historyContent) historyContent.style.display = 'none';
+        if (profileContent) profileContent.style.display = 'none';
+        
+        // Show selected content and activate corresponding sidebar item
+        switch (tab) {
+            case 'dashboard':
+                if (dashboardContent) dashboardContent.style.display = 'block';
+                if (sidebarDashboard) sidebarDashboard.classList.add('active');
+                if (pageTitle) pageTitle.textContent = 'Dashboard';
+                break;
+            case 'analytics':
+                if (analyticsContent) {
+                    analyticsContent.style.display = 'block';
+                    generateAnalytics();
+                }
+                if (sidebarAnalytics) sidebarAnalytics.classList.add('active');
+                if (pageTitle) pageTitle.textContent = 'Analytics';
+                break;
+            case 'history':
+                if (historyContent) {
+                    historyContent.style.display = 'block';
+                    initializeHistory();
+                }
+                if (sidebarHistory) sidebarHistory.classList.add('active');
+                if (pageTitle) pageTitle.textContent = 'History';
+                break;
+            case 'profile':
+                console.log('� Switching to profile page');
+                
+                // Force hide all other content
+                if (dashboardContent) {
+                    dashboardContent.style.display = 'none';
+                    console.log('✅ Dashboard hidden');
+                }
+                if (analyticsContent) {
+                    analyticsContent.style.display = 'none';
+                    console.log('✅ Analytics hidden');
+                }
+                if (historyContent) {
+                    historyContent.style.display = 'none';
+                    console.log('✅ History hidden');
+                }
+                
+                // Force show profile content
+                if (profileContent) {
+                    profileContent.style.display = 'block';
+                    loadProfileData(); // Load the profile form data
+                    
+                    // Refresh icons after content is visible
+                    setTimeout(() => {
+                        if (typeof lucide !== 'undefined') {
+                            lucide.createIcons();
+                            console.log('🔄 Refreshed Lucide icons for profile');
+                        }
+                    }, 100);
+                    
+                    console.log('✅ Profile page is now visible');
+                    
+                    console.log('✅ Profile content COMPLETELY REPLACED with test content');
+                    console.log('🔍 Profile element:', profileContent);
+                    console.log('� Profile innerHTML length:', profileContent.innerHTML.length);
+                    
+                } else {
+                    console.error('❌ Profile content element not found!');
+                }
+                
+                if (sidebarProfile) sidebarProfile.classList.add('active');
+                if (pageTitle) pageTitle.textContent = 'Profile';
+                break;
+        }
+    }
+
+    function signOutUser() {
+        console.log('🚪 Signing out user...');
+        if (window.firebaseAuth && window.firebaseAuth.signOut) {
+            window.firebaseAuth.signOut(window.firebaseAuth.auth)
+                .then(() => {
+                    console.log('✅ User signed out successfully');
+                })
+                .catch((error) => {
+                    console.error('❌ Error signing out:', error);
+                });
+        }
+    }
+
+    // --- Modal Functions ---
+    function openModal(modalId) {
+        console.log('🔄 Opening modal:', modalId);
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.classList.remove('hidden');
+            
+            // Populate goal inputs if it's the goal modal
+            if (modalId === 'goal-modal') {
+                if (calorieGoalInput) calorieGoalInput.value = dailyData.goals.calories;
+                if (proteinGoalInput) proteinGoalInput.value = dailyData.goals.protein;
+            }
+        }
+    }
+
+    function closeModal(modalId) {
+        console.log('🔄 Closing modal:', modalId);
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.classList.add('hidden');
+        }
+    }
+
+    // --- Analytics Functions ---
+    function generateAnalytics() {
+        console.log('🔄 Generating analytics from user data...');
+        
+        const history = getNutritionHistory();
+        const analyticsData = calculateAnalyticsFromHistory(history);
+        
+        // Update analytics display
+        const avgCaloriesEl = document.getElementById('avg-calories');
+        const avgProteinEl = document.getElementById('avg-protein');
+        const daysOnTrackEl = document.getElementById('days-on-track');
+        
+        if (avgCaloriesEl) {
+            avgCaloriesEl.textContent = analyticsData.avgCalories;
+            console.log('✅ Updated avg calories:', analyticsData.avgCalories);
+        }
+        if (avgProteinEl) {
+            avgProteinEl.textContent = analyticsData.avgProtein + 'g';
+            console.log('✅ Updated avg protein:', analyticsData.avgProtein + 'g');
+        }
+        if (daysOnTrackEl) {
+            daysOnTrackEl.textContent = analyticsData.daysOnTrack;
+            console.log('✅ Updated days on track:', analyticsData.daysOnTrack);
+        }
+        
+        // Try to create charts if Chart.js is available
+        if (typeof Chart !== 'undefined') {
+            console.log('✅ Chart.js available, creating charts...');
+            createCalorieChart(analyticsData.weeklyCalories);
+            createProteinChart(analyticsData.weeklyProtein);
+            createMacroChart(analyticsData.macros);
+            createGoalsChart(analyticsData);
+        } else {
+            console.log('⚠️ Chart.js not available - showing calculated data instead');
+        }
+        
+        console.log('✅ Analytics generation complete');
+    }
+
+    function calculateAnalyticsFromHistory(history) {
+        const today = new Date();
+        const weekAgo = new Date(today);
+        weekAgo.setDate(today.getDate() - 6); // Last 7 days including today
+        
+        // Get current week data (Monday to Sunday)
+        const weekDates = getThisWeekDates();
+        const weeklyData = [];
+        const weeklyCalories = [];
+        const weeklyProtein = [];
+        
+        let totalCalories = 0;
+        let totalProtein = 0;
+        let totalCarbs = 0;
+        let totalFat = 0;
+        let daysWithData = 0;
+        let daysOnTrack = 0;
+        
+        // Process this week's data
+        weekDates.forEach(date => {
+            const dateStr = date.toLocaleDateString();
+            const dayData = history[dateStr];
+            
+            if (dayData) {
+                weeklyData.push(dayData);
+                weeklyCalories.push(dayData.totals.calories || 0);
+                weeklyProtein.push(dayData.totals.protein || 0);
+                
+                totalCalories += dayData.totals.calories || 0;
+                totalProtein += dayData.totals.protein || 0;
+                totalCarbs += dayData.totals.carbs || 0;
+                totalFat += dayData.totals.fat || 0;
+                daysWithData++;
+                
+                // Check if day was on track (within 200 calories of goal)
+                const calorieGoal = dayData.goals?.calories || 2000;
+                const proteinGoal = dayData.goals?.protein || 120;
+                if (Math.abs((dayData.totals.calories || 0) - calorieGoal) <= 200 && 
+                    (dayData.totals.protein || 0) >= proteinGoal * 0.8) {
+                    daysOnTrack++;
+                }
+            } else {
+                weeklyCalories.push(0);
+                weeklyProtein.push(0);
+            }
+        });
+        
+        // Include today's data if available
+        if (dailyData && dailyData.date === today.toLocaleDateString()) {
+            const todayCalories = dailyData.totals.calories || 0;
+            const todayProtein = dailyData.totals.protein || 0;
+            
+            // Update today's data in weekly arrays
+            const todayIndex = weekDates.findIndex(date => 
+                date.toLocaleDateString() === dailyData.date
+            );
+            if (todayIndex !== -1) {
+                weeklyCalories[todayIndex] = todayCalories;
+                weeklyProtein[todayIndex] = todayProtein;
+                
+                // Update totals
+                totalCalories += todayCalories;
+                totalProtein += todayProtein;
+                totalCarbs += dailyData.totals.carbs || 0;
+                totalFat += dailyData.totals.fat || 0;
+                daysWithData++;
+                
+                // Check if today is on track
+                const calorieGoal = dailyData.goals?.calories || 2000;
+                const proteinGoal = dailyData.goals?.protein || 120;
+                if (Math.abs(todayCalories - calorieGoal) <= 200 && todayProtein >= proteinGoal * 0.8) {
+                    daysOnTrack++;
+                }
+            }
+        }
+        
+        // Calculate averages
+        const avgCalories = daysWithData > 0 ? Math.round(totalCalories / daysWithData) : 0;
+        const avgProtein = daysWithData > 0 ? Math.round(totalProtein / daysWithData) : 0;
+        
+        // Calculate macro percentages
+        const totalMacroCalories = totalCarbs * 4 + totalProtein * 4 + totalFat * 9;
+        const macros = totalMacroCalories > 0 ? {
+            carbs: Math.round((totalCarbs * 4 / totalMacroCalories) * 100),
+            protein: Math.round((totalProtein * 4 / totalMacroCalories) * 100),
+            fat: Math.round((totalFat * 9 / totalMacroCalories) * 100)
+        } : { carbs: 50, protein: 25, fat: 25 };
+        
+        return {
+            avgCalories,
+            avgProtein,
+            daysOnTrack,
+            weeklyCalories,
+            weeklyProtein,
+            macros,
+            daysWithData
+        };
+    }
+
+    function getThisWeekDates() {
+        const today = new Date();
+        const currentDay = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+        const mondayOffset = currentDay === 0 ? -6 : 1 - currentDay; // Monday as start of week
+        
+        const monday = new Date(today);
+        monday.setDate(today.getDate() + mondayOffset);
+        
+        const weekDates = [];
+        for (let i = 0; i < 7; i++) {
+            const date = new Date(monday);
+            date.setDate(monday.getDate() + i);
+            weekDates.push(date);
+        }
+        
+        return weekDates;
+    }
+
+    function createCalorieChart(data = [1650, 1890, 1750, 2100, 1847, 1920, 1780]) {
+        const ctx = document.getElementById('calorie-chart');
+        if (!ctx) return;
+        
+        // Destroy existing chart if it exists
+        if (window.calorieChart) {
+            window.calorieChart.destroy();
+        }
+        
+        window.calorieChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                datasets: [{
+                    label: 'Daily Calories',
+                    data: data,
+                    borderColor: '#6366f1',
+                    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 2500
+                    }
+                }
+            }
+        });
+    }
+
+    function createProteinChart(data = [85, 102, 88, 115, 95, 108, 92]) {
+        const ctx = document.getElementById('protein-chart');
+        if (!ctx) return;
+        
+        // Destroy existing chart if it exists
+        if (window.proteinChart) {
+            window.proteinChart.destroy();
+        }
+        
+        window.proteinChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                datasets: [{
+                    label: 'Daily Protein (g)',
+                    data: data,
+                    backgroundColor: '#10b981',
+                    borderColor: '#059669',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 150
+                    }
+                }
+            }
+        });
+    }
+
+    function createMacroChart(macros = {carbs: 40, protein: 30, fat: 30}) {
+        const ctx = document.getElementById('macro-chart');
+        if (!ctx) return;
+        
+        // Destroy existing chart if it exists
+        if (window.macroChart) {
+            window.macroChart.destroy();
+        }
+        
+        window.macroChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Carbohydrates', 'Protein', 'Fat'],
+                datasets: [{
+                    data: [macros.carbs, macros.protein, macros.fat],
+                    backgroundColor: ['#f59e0b', '#10b981', '#ef4444'],
+                    borderWidth: 2,
+                    borderColor: '#ffffff'
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+    }
+
+    function createGoalsChart(analyticsData) {
+        const ctx = document.getElementById('goals-chart');
+        if (!ctx) return;
+        
+        // Destroy existing chart if it exists
+        if (window.goalsChart) {
+            window.goalsChart.destroy();
+        }
+        
+        // Calculate goal achievement percentages from real data
+        const goalData = calculateGoalAchievement();
+        
+        window.goalsChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: goalData.labels,
+                datasets: [
+                    {
+                        label: 'Calorie Goal Achievement (%)',
+                        data: goalData.calorieGoalAchieved,
+                        borderColor: '#6366f1',
+                        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                        tension: 0.4,
+                        fill: false
+                    },
+                    {
+                        label: 'Protein Goal Achievement (%)',
+                        data: goalData.proteinGoalAchieved,
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        tension: 0.4,
+                        fill: false
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 120,
+                        ticks: {
+                            callback: function(value) {
+                                return value + '%';
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'top'
+                    }
+                }
+            }
+        });
+    }
+
+    function calculateGoalAchievement() {
+        const history = getNutritionHistory();
+        const weekDates = getThisWeekDates();
+        const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        const calorieGoalAchieved = [];
+        const proteinGoalAchieved = [];
+        
+        weekDates.forEach((date, index) => {
+            const dateStr = date.toLocaleDateString();
+            const dayData = history[dateStr];
+            
+            let caloriePercent = 0;
+            let proteinPercent = 0;
+            
+            if (dayData) {
+                const calorieGoal = dayData.goals?.calories || 2000;
+                const proteinGoal = dayData.goals?.protein || 120;
+                
+                caloriePercent = Math.round(((dayData.totals.calories || 0) / calorieGoal) * 100);
+                proteinPercent = Math.round(((dayData.totals.protein || 0) / proteinGoal) * 100);
+            }
+            
+            // Include today's data if it's the current day
+            if (dailyData && dailyData.date === dateStr) {
+                const calorieGoal = dailyData.goals?.calories || 2000;
+                const proteinGoal = dailyData.goals?.protein || 120;
+                
+                caloriePercent = Math.round(((dailyData.totals.calories || 0) / calorieGoal) * 100);
+                proteinPercent = Math.round(((dailyData.totals.protein || 0) / proteinGoal) * 100);
+            }
+            
+            calorieGoalAchieved.push(caloriePercent);
+            proteinGoalAchieved.push(proteinPercent);
+        });
+        
+        return {
+            labels,
+            calorieGoalAchieved,
+            proteinGoalAchieved
+        };
+    }
+
+    // --- Profile Functions ---
+    function loadProfileData() {
+        console.log('🔄 Loading profile data...');
+        console.log('🔍 Current user:', currentUser);
+        
+        if (!currentUser) {
+            console.log('⚠️ No current user found');
+            return;
+        }
+        
+        // Load basic account info
+        const accountEmailEl = document.getElementById('account-email');
+        const memberSinceEl = document.getElementById('member-since');
+        
+        if (accountEmailEl) {
+            accountEmailEl.textContent = currentUser.email;
+            console.log('✅ Updated account email:', currentUser.email);
+        }
+        if (memberSinceEl) {
+            const creationDate = currentUser.metadata?.creationTime ? 
+                new Date(currentUser.metadata.creationTime).toLocaleDateString() : 
+                'Unknown';
+            memberSinceEl.textContent = creationDate;
+            console.log('✅ Updated member since:', creationDate);
+        }
+        
+        // Add event listeners for profile forms
+        setupProfileEventListeners();
+        
+        // Load saved profile data (including picture)
+        loadSavedProfileData();
+        
+        // Calculate and display health metrics when data changes
+        calculateHealthMetrics();
+        
+        console.log('✅ Profile data loading complete');
+    }
+
+    function setupProfileEventListeners() {
+        // Profile form inputs
+        const heightInput = document.getElementById('profile-height');
+        const weightInput = document.getElementById('profile-weight');
+        const ageInput = document.getElementById('profile-age');
+        const genderSelect = document.getElementById('profile-gender');
+        const activitySelect = document.getElementById('profile-activity');
+        const nameInput = document.getElementById('profile-name');
+        const locationInput = document.getElementById('profile-location');
+        
+        // Profile picture elements
+        const avatarUpload = document.getElementById('avatar-upload');
+        const uploadAvatarBtn = document.getElementById('upload-avatar-btn');
+        const removeAvatarBtn = document.getElementById('remove-avatar-btn');
+        const currentAvatar = document.querySelector('.current-avatar');
+        
+        // Save profile button
+        const saveProfileBtn = document.getElementById('save-profile-btn');
+        const resetProfileBtn = document.getElementById('reset-profile-btn');
+        
+        // Profile picture event listeners
+        if (uploadAvatarBtn && avatarUpload) {
+            uploadAvatarBtn.addEventListener('click', () => {
+                avatarUpload.click();
+            });
+            
+            avatarUpload.addEventListener('change', handleAvatarUpload);
+        }
+        
+        if (currentAvatar && avatarUpload) {
+            currentAvatar.addEventListener('click', () => {
+                avatarUpload.click();
+            });
+        }
+        
+        if (removeAvatarBtn) {
+            removeAvatarBtn.addEventListener('click', removeAvatar);
+        }
+        
+        // Add change listeners to calculate metrics in real-time
+        [heightInput, weightInput, ageInput, genderSelect, activitySelect].forEach(element => {
+            if (element) {
+                element.addEventListener('input', calculateHealthMetrics);
+                element.addEventListener('change', calculateHealthMetrics);
+                element.addEventListener('blur', validateField);
+            }
+        });
+        
+        // Add validation to name and location fields
+        [nameInput, locationInput].forEach(element => {
+            if (element) {
+                element.addEventListener('blur', validateField);
+            }
+        });
+        
+        if (saveProfileBtn) {
+            saveProfileBtn.addEventListener('click', saveProfileData);
+        }
+        
+        if (resetProfileBtn) {
+            resetProfileBtn.addEventListener('click', resetProfileData);
+        }
+        
+        // Load saved profile data
+        loadSavedProfileData();
+    }
+
+    function calculateHealthMetrics() {
+        const height = parseFloat(document.getElementById('profile-height')?.value) || 0;
+        const weight = parseFloat(document.getElementById('profile-weight')?.value) || 0;
+        const age = parseInt(document.getElementById('profile-age')?.value) || 0;
+        const gender = document.getElementById('profile-gender')?.value || '';
+        const activity = document.getElementById('profile-activity')?.value || '';
+        
+        // Calculate BMI
+        if (height > 0 && weight > 0) {
+            const heightInM = height / 100; // Convert cm to meters
+            const bmi = weight / (heightInM * heightInM);
+            
+            const bmiEl = document.getElementById('calculated-bmi');
+            const bmiCategoryEl = document.getElementById('bmi-category');
+            
+            if (bmiEl) bmiEl.textContent = bmi.toFixed(1);
+            
+            if (bmiCategoryEl) {
+                let category = '';
+                if (bmi < 18.5) category = 'Underweight';
+                else if (bmi < 25) category = 'Normal';
+                else if (bmi < 30) category = 'Overweight';
+                else category = 'Obese';
+                bmiCategoryEl.textContent = category;
+            }
+        }
+        
+        // Calculate daily calorie needs (Harris-Benedict Formula)
+        if (height > 0 && weight > 0 && age > 0 && gender) {
+            let bmr = 0;
+            if (gender === 'male') {
+                bmr = 88.362 + (13.397 * weight) + (4.799 * height) - (5.677 * age);
+            } else if (gender === 'female') {
+                bmr = 447.593 + (9.247 * weight) + (3.098 * height) - (4.330 * age);
+            }
+            
+            // Apply activity multiplier
+            const activityMultipliers = {
+                'sedentary': 1.2,
+                'light': 1.375,
+                'moderate': 1.55,
+                'active': 1.725,
+                'very-active': 1.9
+            };
+            
+            const multiplier = activityMultipliers[activity] || 1.2;
+            const dailyCalories = Math.round(bmr * multiplier);
+            
+            const caloriesEl = document.getElementById('calculated-calories');
+            const proteinEl = document.getElementById('calculated-protein');
+            
+            if (caloriesEl) caloriesEl.textContent = dailyCalories + ' kcal';
+            
+            // Protein recommendation (0.8-1.2g per kg body weight)
+            const proteinNeeds = Math.round(weight * 1.0);
+            if (proteinEl) proteinEl.textContent = proteinNeeds + ' g';
+        }
+    }
+
+    function saveProfileData() {
+        console.log('Saving profile data...');
+        
+        if (!currentUser) {
+            alert('Please sign in to save your profile data');
+            return;
+        }
+        
+        // Collect all profile data
+        const profileData = {
+            'profile-name': document.getElementById('profile-name')?.value || '',
+            'profile-age': document.getElementById('profile-age')?.value || '',
+            'profile-gender': document.getElementById('profile-gender')?.value || '',
+            'profile-location': document.getElementById('profile-location')?.value || '',
+            'profile-activity': document.getElementById('profile-activity')?.value || '',
+            'profile-height': document.getElementById('profile-height')?.value || '',
+            'profile-weight': document.getElementById('profile-weight')?.value || '',
+            'profile-target-weight': document.getElementById('profile-target-weight')?.value || '',
+            'profile-goal': document.getElementById('profile-goal')?.value || '',
+            'height-unit': document.getElementById('height-unit')?.value || 'cm',
+            'weight-unit': document.getElementById('weight-unit')?.value || 'kg',
+            'target-weight-unit': document.getElementById('target-weight-unit')?.value || 'kg'
+        };
+        
+        try {
+            // Save to localStorage for now (you can enhance this to save to Firestore)
+            localStorage.setItem(`profileData_${currentUser.uid}`, JSON.stringify(profileData));
+            
+            // Show success message
+            const saveBtn = document.getElementById('save-profile-btn');
+            const originalText = saveBtn.textContent;
+            saveBtn.textContent = 'Saved!';
+            saveBtn.style.background = 'var(--success-color)';
+            
+            setTimeout(() => {
+                saveBtn.textContent = originalText;
+                saveBtn.style.background = '';
+            }, 2000);
+            
+            console.log('✅ Profile data saved successfully');
+        } catch (error) {
+            console.error('❌ Error saving profile data:', error);
+            alert('Error saving profile data. Please try again.');
+        }
+    }
+
+    function resetProfileData() {
+        console.log('Resetting profile data...');
+        const inputs = document.querySelectorAll('#profile-content input, #profile-content select');
+        inputs.forEach(input => {
+            input.value = '';
+        });
+        
+        // Clear calculated metrics
+        document.getElementById('calculated-bmi').textContent = '--';
+        document.getElementById('bmi-category').textContent = '--';
+        document.getElementById('calculated-calories').textContent = '-- kcal';
+        document.getElementById('calculated-protein').textContent = '-- g';
+        
+        // Reset profile picture
+        removeAvatar();
+    }
+
+    // --- Profile Picture Functions ---
+    function handleAvatarUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+            alert('Please select a valid image file');
+            return;
+        }
+        
+        // Validate file size (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            alert('Image size should be less than 5MB');
+            return;
+        }
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const imageData = e.target.result;
+            updateProfilePicture(imageData);
+            saveProfilePicture(imageData);
+        };
+        reader.readAsDataURL(file);
+    }
+    
+    function updateProfilePicture(imageData) {
+        const avatarImage = document.getElementById('profile-avatar');
+        if (avatarImage) {
+            avatarImage.src = imageData;
+        }
+        
+        // Update sidebar avatar
+        updateSidebarAvatar(imageData);
+    }
+    
+    function updateSidebarAvatar(imageData) {
+        const sidebarAvatar = document.querySelector('.user-avatar-sidebar');
+        const userInitial = document.getElementById('user-initial-sidebar');
+        
+        if (sidebarAvatar && imageData) {
+            // Create or update image element in sidebar
+            let sidebarImg = sidebarAvatar.querySelector('img');
+            if (!sidebarImg) {
+                sidebarImg = document.createElement('img');
+                sidebarAvatar.appendChild(sidebarImg);
+            }
+            sidebarImg.src = imageData;
+            
+            // Hide the initial letter
+            if (userInitial) {
+                userInitial.style.display = 'none';
+            }
+        }
+    }
+    
+    function removeSidebarAvatar() {
+        const sidebarAvatar = document.querySelector('.user-avatar-sidebar');
+        const userInitial = document.getElementById('user-initial-sidebar');
+        
+        if (sidebarAvatar) {
+            const sidebarImg = sidebarAvatar.querySelector('img');
+            if (sidebarImg) {
+                sidebarImg.remove();
+            }
+            
+            // Show the initial letter again
+            if (userInitial) {
+                userInitial.style.display = 'flex';
+            }
+        }
+        
+        // Update sidebar avatar if it exists
+        const sidebarInitialAvatar = document.getElementById('user-initial-sidebar');
+        if (sidebarInitialAvatar && imageData) {
+            sidebarInitialAvatar.style.backgroundImage = `url(${imageData})`;
+            sidebarInitialAvatar.style.backgroundSize = 'cover';
+            sidebarInitialAvatar.style.backgroundPosition = 'center';
+            sidebarInitialAvatar.textContent = ''; // Remove initials
+        }
+    }
+    
+    function removeAvatar() {
+        const avatarImage = document.getElementById('profile-avatar');
+        const defaultAvatar = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iNTAiIGN5PSI1MCIgcj0iNTAiIGZpbGw9IiNmMGYwZjAiLz48Y2lyY2xlIGN4PSI1MCIgY3k9IjM3IiByPSIxNSIgZmlsbD0iIzk5OTk5OSIvPjxwYXRoIGQ9Ik0yMCA3NWMwLTE2LjU2OSAxMy40MzEtMzAgMzAtMzBzMzAgMTMuNDMxIDMwIDMwIiBmaWxsPSIjOTk5OTk5Ii8+PC9zdmc+";
+        
+        if (avatarImage) {
+            avatarImage.src = defaultAvatar;
+        }
+        
+        // Remove from sidebar avatar
+        removeSidebarAvatar();
+        
+        // Remove from storage
+        if (currentUser) {
+            localStorage.removeItem(`profilePicture_${currentUser.uid}`);
+        }
+    }
+    
+    function saveProfilePicture(imageData) {
+        if (currentUser) {
+            localStorage.setItem(`profilePicture_${currentUser.uid}`, imageData);
+        }
+    }
+    
+    function loadSavedProfileData() {
+        if (!currentUser) return;
+        
+        // Load profile picture
+        const savedAvatar = localStorage.getItem(`profilePicture_${currentUser.uid}`);
+        if (savedAvatar) {
+            updateProfilePicture(savedAvatar);
+        }
+        
+        // Load other profile data
+        const savedProfile = localStorage.getItem(`profileData_${currentUser.uid}`);
+        if (savedProfile) {
+            try {
+                const profileData = JSON.parse(savedProfile);
+                
+                // Fill in form fields
+                Object.keys(profileData).forEach(key => {
+                    const element = document.getElementById(key);
+                    if (element) {
+                        element.value = profileData[key];
+                    }
+                });
+                
+                // Recalculate metrics after loading data
+                calculateHealthMetrics();
+            } catch (error) {
+                console.error('Error loading profile data:', error);
+            }
+        }
+    }
+
+    // --- Profile Validation Functions ---
+    function validateField(event) {
+        const field = event.target;
+        const fieldId = field.id;
+        const value = field.value.trim();
+        const inputGroup = field.closest('.input-group');
+        
+        // Remove existing validation classes
+        inputGroup?.classList.remove('error', 'success');
+        
+        let isValid = true;
+        
+        switch (fieldId) {
+            case 'profile-name':
+                isValid = value.length >= 2 && value.length <= 50;
+                break;
+            case 'profile-age':
+                const age = parseInt(value);
+                isValid = age >= 13 && age <= 120;
+                break;
+            case 'profile-height':
+                const height = parseFloat(value);
+                isValid = height > 0 && height <= 300; // cm or reasonable ft
+                break;
+            case 'profile-weight':
+            case 'profile-target-weight':
+                const weight = parseFloat(value);
+                isValid = weight > 0 && weight <= 1000; // kg or lbs
+                break;
+            case 'profile-location':
+                isValid = value.length <= 100; // Optional field
+                break;
+            default:
+                isValid = value !== '';
+        }
+        
+        // Apply validation styling
+        if (value && inputGroup) {
+            inputGroup.classList.add(isValid ? 'success' : 'error');
+        }
+        
+        return isValid;
+    }
+    
+    function validateAllFields() {
+        const requiredFields = ['profile-age', 'profile-height', 'profile-weight'];
+        let allValid = true;
+        
+        requiredFields.forEach(fieldId => {
+            const field = document.getElementById(fieldId);
+            if (field) {
+                const event = { target: field };
+                if (!validateField(event)) {
+                    allValid = false;
+                }
+            }
+        });
+        
+        return allValid;
+    }
+
+    // --- Authentication Form Handlers ---
+    async function handleSignIn(e) {
+        e.preventDefault();
+        console.log('🔑 Attempting sign in...');
+        
+        const email = document.getElementById('signin-email').value;
+        const password = document.getElementById('signin-password').value;
+        
+        if (!email || !password) {
+            console.log('❌ Missing email or password');
+            authError.textContent = 'Please fill in all fields';
+            return;
+        }
+        
+        try {
+            console.log('🔄 Signing in user:', email);
+            const userCredential = await window.firebaseAuth.signInWithEmailAndPassword(window.firebaseAuth.auth, email, password);
+            console.log('✅ User signed in successfully:', userCredential.user.email);
+            closeModal('auth-modal');
+        } catch (error) {
+            console.error('❌ Error signing in:', error);
+            authError.textContent = getAuthErrorMessage(error.code);
+        }
+    }
+
+    async function handleSignUp(e) {
+        e.preventDefault();
+        console.log('📝 Attempting sign up...');
+        
+        const email = document.getElementById('signup-email').value;
+        const password = document.getElementById('signup-password').value;
+        
+        if (!email || !password) {
+            console.log('❌ Missing email or password');
+            authError.textContent = 'Please fill in all fields';
+            return;
+        }
+        
+        if (password.length < 6) {
+            console.log('❌ Password too short');
+            authError.textContent = 'Password must be at least 6 characters';
+            return;
+        }
+        
+        try {
+            console.log('🔄 Creating user account:', email);
+            const userCredential = await window.firebaseAuth.createUserWithEmailAndPassword(window.firebaseAuth.auth, email, password);
+            console.log('✅ User signed up successfully:', userCredential.user.email);
+            closeModal('auth-modal');
+        } catch (error) {
+            console.error('❌ Error signing up:', error);
+            authError.textContent = getAuthErrorMessage(error.code);
+        }
+    }
+
+    function showSignUpForm() {
+        if (signinForm) signinForm.classList.add('hidden');
+        if (signupForm) signupForm.classList.remove('hidden');
+        const authTitle = document.getElementById('auth-title');
+        if (authTitle) authTitle.textContent = 'Sign Up';
+    }
+
+    function showSignInForm() {
+        if (signupForm) signupForm.classList.add('hidden');
+        if (signinForm) signinForm.classList.remove('hidden');
+        const authTitle = document.getElementById('auth-title');
+        if (authTitle) authTitle.textContent = 'Sign In';
+    }
+
+    function getAuthErrorMessage(errorCode) {
+        switch (errorCode) {
+            case 'auth/user-not-found':
+                return 'No account found with this email address';
+            case 'auth/wrong-password':
+                return 'Incorrect password';
+            case 'auth/email-already-in-use':
+                return 'An account with this email already exists';
+            case 'auth/weak-password':
+                return 'Password is too weak';
+            case 'auth/invalid-email':
+                return 'Invalid email address';
+            case 'auth/too-many-requests':
+                return 'Too many failed attempts. Please try again later';
+            default:
+                return 'An error occurred. Please try again';
+        }
+    }
+
+    // --- Data Management Functions ---
+    async function saveUserDataToFirestore() {
+        if (!currentUser || !window.firebaseDb) {
+            console.log('Cannot save - user not signed in or Firestore not available');
+            return;
+        }
+
+        try {
+            const userDocRef = window.firebaseDb.doc(window.firebaseDb.db, 'users', currentUser.uid);
+            await window.firebaseDb.setDoc(userDocRef, {
+                email: currentUser.email,
+                dailyData: dailyData,
+                lastUpdated: window.firebaseDb.serverTimestamp()
+            }, { merge: true });
+            
+            console.log('✅ User data saved to Firestore');
+        } catch (error) {
+            console.error('❌ Error saving user data:', error);
+        }
+    }
+
+    async function loadUserDataFromFirestore() {
+        if (!currentUser || !window.firebaseDb) {
+            console.log('Cannot load - user not signed in or Firestore not available');
+            return;
+        }
+
+        try {
+            const userDocRef = window.firebaseDb.doc(window.firebaseDb.db, 'users', currentUser.uid);
+            const userDoc = await window.firebaseDb.getDoc(userDocRef);
+            
+            if (userDoc.exists()) {
+                const userData = userDoc.data();
+                if (userData.dailyData) {
+                    dailyData = userData.dailyData;
+                    console.log('✅ User data loaded from Firestore');
+                } else {
+                    console.log('📝 No daily data found, using defaults');
+                }
+            } else {
+                console.log('📝 No user document found, creating new one');
+                await saveUserDataToFirestore();
+            }
+        } catch (error) {
+            console.error('❌ Error loading user data:', error);
+        }
+    }
+
+    // --- Core App Functions ---
+    function loadDailyData() {
+        const today = new Date().toLocaleDateString();
+        const saved = localStorage.getItem('nutriTrackDaily');
+        
+        if (saved) {
+            try {
+                const parsed = JSON.parse(saved);
+                if (parsed.date === today) {
+                    dailyData = parsed;
+                } else {
+                    // Save yesterday's data before resetting
+                    if (currentUser && parsed.date) {
+                        saveDailyDataToHistory(parsed);
+                    }
+                    resetToNewDay();
+                }
+            } catch (e) {
+                console.log('Error parsing saved data, using defaults');
+                resetToNewDay();
+            }
+        } else {
+            resetToNewDay();
+        }
+    }
+
+    function saveDailyData() {
+        dailyData.date = new Date().toLocaleDateString();
+        localStorage.setItem('nutriTrackDaily', JSON.stringify(dailyData));
+        
+        if (currentUser) {
+            saveUserDataToFirestore();
+            saveDailyDataToHistory(dailyData);
+        }
+    }
+
+    // Save daily data to historical records for analytics
+    function saveDailyDataToHistory(dataToSave) {
+        if (!currentUser || !dataToSave.date) return;
+        
+        const historyKey = `nutritionHistory_${currentUser.uid}`;
+        let history = JSON.parse(localStorage.getItem(historyKey) || '{}');
+        
+        // Store data by date
+        history[dataToSave.date] = {
+            meals: dataToSave.meals,
+            totals: dataToSave.totals,
+            goals: dataToSave.goals,
+            timestamp: Date.now()
+        };
+        
+        // Keep only last 30 days to prevent excessive storage
+        const dates = Object.keys(history).sort((a, b) => new Date(b) - new Date(a));
+        if (dates.length > 30) {
+            dates.slice(30).forEach(date => delete history[date]);
+        }
+        
+        localStorage.setItem(historyKey, JSON.stringify(history));
+        console.log('📊 Saved nutrition data for', dataToSave.date);
+    }
+
+    // Get historical data for analytics
+    function getNutritionHistory(days = 7) {
+        if (!currentUser) return {};
+        
+        const historyKey = `nutritionHistory_${currentUser.uid}`;
+        const history = JSON.parse(localStorage.getItem(historyKey) || '{}');
+        
+        return history;
+    }
+
+    function resetToNewDay() {
+        dailyData = {
+            date: new Date().toLocaleDateString(),
+            meals: { breakfast: [], lunch: [], dinner: [], snacks: [] },
+            totals: { calories: 0, protein: 0, carbs: 0, fat: 0 },
+            goals: dailyData.goals || { calories: 2000, protein: 120 }
+        };
+        saveDailyData();
+    }
+
+    function openMealEntry(mealType) {
+        currentMealType = mealType;
+        const mealName = mealType.charAt(0).toUpperCase() + mealType.slice(1);
+        if (mealEntryTitle) {
+            mealEntryTitle.textContent = `Add to ${mealName}`;
+        }
+        
+        openInputContainer(mealType);
+        if (mealEntryModal) {
+            mealEntryModal.classList.remove('hidden');
+        }
     }
 
     function openInputContainer(mealType) {
-        mealEntryContent.innerHTML = `
-            <video class="video-feed" width="100%" height="240" autoplay playsinline style="display: none; border-radius: 8px; margin-bottom: 12px;"></video>
-            <div class="button-group">
-                <label for="modal-file-upload" class="custom-file-upload">
-                    <i data-lucide="upload"></i> Upload Image
-                </label>
-                <input id="modal-file-upload" type="file" accept="image/*" capture="environment" style="display:none;"/>
-                <button class="camera-btn" type="button">
-                    <i data-lucide="camera"></i> Open Camera
+        if (mealEntryContent) {
+            mealEntryContent.innerHTML = `
+                <video class="video-feed" width="100%" height="240" autoplay playsinline style="display: none; border-radius: 8px; margin-bottom: 12px;"></video>
+                <div class="button-group">
+                    <label for="modal-file-upload" class="custom-file-upload">
+                        <i data-lucide="upload"></i> Upload Image
+                    </label>
+                    <input id="modal-file-upload" type="file" accept="image/*" capture="environment" style="display:none;"/>
+                    <button class="camera-btn" type="button">
+                        <i data-lucide="camera"></i> Open Camera
+                    </button>
+                </div>
+                <div class="result-display"></div>
+                <button class="back-btn styled-back-btn" type="button">
+                    <i data-lucide="arrow-left"></i> Back
                 </button>
-            </div>
-            <div class="result-display"></div>
-            <button class="back-btn styled-back-btn" type="button">
-                <i data-lucide="arrow-left"></i> Back
-            </button>
-        `;
+            `;
+        }
+        
         if (window.lucide?.createIcons) lucide.createIcons();
 
         const fileInput = document.getElementById('modal-file-upload');
-        fileInput.addEventListener('change', (e) => handleFileUpload(e, mealType));
+        if (fileInput) {
+            fileInput.addEventListener('change', (e) => handleFileUpload(e, mealType));
+        }
 
         const camBtn = mealEntryContent.querySelector('.camera-btn');
-        camBtn.addEventListener('click', (e) => toggleCamera(mealType, e.currentTarget));
+        if (camBtn) {
+            camBtn.addEventListener('click', (e) => toggleCamera(mealType, e.currentTarget));
+        }
 
         const backBtn = mealEntryContent.querySelector('.back-btn');
-        backBtn.addEventListener('click', () => closeInputContainer());
+        if (backBtn) {
+            backBtn.addEventListener('click', () => closeInputContainer());
+        }
     }
 
     function closeInputContainer() {
         stopCamera();
         currentImageBase64 = null;
-        mealEntryContent.innerHTML = '';
-        mealEntryModal.classList.add('hidden');
+        if (mealEntryContent) {
+            mealEntryContent.innerHTML = '';
+        }
+        if (mealEntryModal) {
+            mealEntryModal.classList.add('hidden');
+        }
     }
 
     function handleFileUpload(event, mealType) {
@@ -141,19 +1543,47 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function startCamera(mealType) {
-        const videoEl = mealEntryContent.querySelector('.video-feed');
+        const videoEl = mealEntryContent?.querySelector('.video-feed');
+        console.log('Starting camera, video element found:', !!videoEl); // Debug log
+        
         try {
-            activeStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
-            videoEl.srcObject = activeStream;
-            videoEl.style.display = 'block';
-            await videoEl.play();
-            await new Promise(res => {
-                if (videoEl.readyState >= 2 && videoEl.videoWidth) return res();
-                videoEl.onloadedmetadata = () => res();
+            activeStream = await navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: { ideal: 'environment' } }, 
+                audio: false 
             });
-            if (scanningInterval) clearInterval(scanningInterval);
-            scanningInterval = setInterval(() => captureAndAnalyze(mealType), 2500);
-        } catch (err) { console.error("Error accessing camera: ", err); }
+            
+            console.log('Got camera stream:', !!activeStream); // Debug log
+            
+            if (videoEl && activeStream) {
+                videoEl.srcObject = activeStream;
+                videoEl.style.display = 'block'; // Make video visible
+                videoEl.style.width = '100%';
+                videoEl.style.maxHeight = '300px';
+                videoEl.style.borderRadius = '8px';
+                videoEl.style.marginBottom = '12px';
+                
+                console.log('Video element configured, waiting for play...'); // Debug log
+                
+                await videoEl.play();
+                await new Promise(res => {
+                    if (videoEl.readyState >= 2 && videoEl.videoWidth) return res();
+                    videoEl.onloadedmetadata = () => {
+                        console.log('Video metadata loaded'); // Debug log
+                        res();
+                    };
+                });
+                
+                console.log('Camera started successfully, setting up scanning interval'); // Debug log
+                
+                if (scanningInterval) clearInterval(scanningInterval);
+                scanningInterval = setInterval(() => captureAndAnalyze(mealType), 2500);
+            } else {
+                console.error('Video element or stream not available');
+            }
+        } catch (err) { 
+            console.error("Error accessing camera: ", err);
+            alert('Could not access camera. Please check permissions and try again.');
+        }
     }
 
     function stopCamera() {
@@ -161,21 +1591,38 @@ document.addEventListener('DOMContentLoaded', () => {
         activeStream = null;
         if (scanningInterval) clearInterval(scanningInterval);
         scanningInterval = null;
-        const cameraBtn = mealEntryContent.querySelector('.camera-btn');
+        const cameraBtn = mealEntryContent?.querySelector('.camera-btn');
         if (cameraBtn) {
             cameraBtn.innerHTML = '<i data-lucide="camera"></i> Open Camera';
             if (window.lucide?.createIcons) lucide.createIcons();
         }
-        const videoEl = mealEntryContent.querySelector('.video-feed');
+        const videoEl = mealEntryContent?.querySelector('.video-feed');
         if (videoEl) videoEl.style.display = 'none';
     }
 
     function captureAndAnalyze(mealType) {
-        if (!activeStream) return;
-        const videoEl = mealEntryContent.querySelector('.video-feed');
-        if (!videoEl || !videoEl.videoWidth || !videoEl.videoHeight) return;
-        const context = canvas.getContext('2d');
-        if (!context) return;
+        if (!activeStream) {
+            console.log('No active stream for capture');
+            return;
+        }
+        
+        const videoEl = mealEntryContent?.querySelector('.video-feed');
+        if (!videoEl || !videoEl.videoWidth || !videoEl.videoHeight) {
+            console.log('Video element not ready:', {
+                videoEl: !!videoEl,
+                videoWidth: videoEl?.videoWidth,
+                videoHeight: videoEl?.videoHeight
+            });
+            return;
+        }
+        
+        const context = canvas?.getContext('2d');
+        if (!context || !canvas) {
+            console.log('Canvas not available');
+            return;
+        }
+        
+        console.log('Capturing frame for analysis...');
         canvas.width = videoEl.videoWidth;
         canvas.height = videoEl.videoHeight;
         context.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
@@ -184,33 +1631,52 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     async function analyzeImage(imageBase64, mealType) {
-        const resultDisplay = mealEntryContent.querySelector('.result-display');
-        resultDisplay.innerHTML = `<div class="loader"></div>`;
+        const resultDisplay = mealEntryContent?.querySelector('.result-display');
+        if (resultDisplay) {
+            resultDisplay.innerHTML = `<div class="loader"></div><p>Analyzing your food...</p>`;
+        }
+        
+        console.log('Analyzing image, size:', imageBase64?.length || 0);
+        
         try {
             const response = await fetch('/api/analyze-image', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ image: imageBase64 })
             });
-            if (!response.ok) throw new Error('API error');
+            
+            console.log('API response status:', response.status);
+            
+            if (!response.ok) throw new Error(`API error: ${response.status}`);
+            
             const apiResult = await response.json();
+            console.log('API result:', apiResult);
+            
             if (Array.isArray(apiResult) && apiResult.length > 0) {
                 stopCamera();
                 displayMultiResults(apiResult, mealType);
             } else if (apiResult.error) {
-                resultDisplay.innerHTML = `<p>${apiResult.error}</p>`;
+                if (resultDisplay) {
+                    resultDisplay.innerHTML = `<p style="color: red;">${apiResult.error}</p>`;
+                }
             } else {
-                resultDisplay.innerHTML = `<p>No food detected. Try another image.</p>`;
+                if (resultDisplay) {
+                    resultDisplay.innerHTML = `<p>No food detected. Try another image or adjust the camera angle.</p>`;
+                }
             }
         } catch (err) {
             console.error('Error analyzing image:', err);
-            resultDisplay.innerHTML = `<p>An error occurred. Please try again.</p>`;
+            if (resultDisplay) {
+                resultDisplay.innerHTML = `<p style="color: red;">An error occurred: ${err.message}. Please try again.</p>`;
+            }
         }
     }
     
     async function refineImage(correctionText, mealType) {
-        const resultDisplay = mealEntryContent.querySelector('.result-display');
-        resultDisplay.innerHTML = `<div class="loader"></div>`;
+        const resultDisplay = mealEntryContent?.querySelector('.result-display');
+        if (resultDisplay) {
+            resultDisplay.innerHTML = `<div class="loader"></div>`;
+        }
         try {
             const response = await fetch('/api/refine-image', {
                 method: 'POST',
@@ -220,18 +1686,24 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             const data = await response.json();
             if (data.error) {
-                resultDisplay.innerHTML = `<p>${data.error}</p>`;
+                if (resultDisplay) {
+                    resultDisplay.innerHTML = `<p>${data.error}</p>`;
+                }
             } else {
                 displayMultiResults(data, mealType);
             }
         } catch (err) {
             console.error('Error refining image:', err);
-            resultDisplay.innerHTML = `<p>An error occurred during refinement.</p>`;
+            if (resultDisplay) {
+                resultDisplay.innerHTML = `<p>An error occurred during refinement.</p>`;
+            }
         }
     }
 
     function displayMultiResults(items, mealType) {
-        const resultDisplay = mealEntryContent.querySelector('.result-display');
+        const resultDisplay = mealEntryContent?.querySelector('.result-display');
+        if (!resultDisplay) return;
+        
         let cardsHTML = items.map((item, index) => {
             const nutrients = item.nutrients || {};
             return `
@@ -265,26 +1737,38 @@ document.addEventListener('DOMContentLoaded', () => {
             const portionInput = card.querySelector('.portion-input');
             const unitSelect = card.querySelector('.unit-select');
             const updateHandler = () => updateMacrosOnPortionChange(portionInput.value, unitSelect.value, originalData, card);
-            portionInput.addEventListener('input', updateHandler);
-            unitSelect.addEventListener('change', updateHandler);
+            
+            if (portionInput) portionInput.addEventListener('input', updateHandler);
+            if (unitSelect) unitSelect.addEventListener('change', updateHandler);
 
-            card.querySelector('.add-item-btn').addEventListener('click', () => {
-                const { calories, protein, carbs, fat } = calculateFinalMacros(portionInput.value, unitSelect.value, originalData);
-                addFoodToMeal(mealType, {
-                    id: Date.now() + Math.random(), name: originalData.foodName, portion: parseFloat(portionInput.value), unit: unitSelect.value, gramsPerPiece: originalData.gramsPerPiece,
-                    nutrientsPerGram: {
-                        calories: (originalData.nutrients.calories || 0) / (originalData.portionGrams || 1),
-                        protein: (originalData.nutrients.proteinGrams || 0) / (originalData.portionGrams || 1),
-                        carbs: (originalData.nutrients.carbsGrams || 0) / (originalData.portionGrams || 1),
-                        fat: (originalData.nutrients.fatGrams || 0) / (originalData.portionGrams || 1)
-                    },
-                    nutrients: { calories, protein, carbs, fat }
+            const addBtn = card.querySelector('.add-item-btn');
+            if (addBtn) {
+                addBtn.addEventListener('click', () => {
+                    const { calories, protein, carbs, fat } = calculateFinalMacros(portionInput.value, unitSelect.value, originalData);
+                    addFoodToMeal(mealType, {
+                        id: Date.now() + Math.random(), 
+                        name: originalData.foodName, 
+                        portion: parseFloat(portionInput.value), 
+                        unit: unitSelect.value, 
+                        gramsPerPiece: originalData.gramsPerPiece,
+                        nutrientsPerGram: {
+                            calories: (originalData.nutrients.calories || 0) / (originalData.portionGrams || 1),
+                            protein: (originalData.nutrients.proteinGrams || 0) / (originalData.portionGrams || 1),
+                            carbs: (originalData.nutrients.carbsGrams || 0) / (originalData.portionGrams || 1),
+                            fat: (originalData.nutrients.fatGrams || 0) / (originalData.portionGrams || 1)
+                        },
+                        nutrients: { calories, protein, carbs, fat }
+                    });
+                    card.style.display = 'none';
+                    const remainingVisibleCards = resultDisplay.querySelector('.food-card:not([style*="display: none"])');
+                    if (!remainingVisibleCards) closeInputContainer();
                 });
-                card.style.display = 'none';
-                const remainingVisibleCards = resultDisplay.querySelector('.food-card:not([style*="display: none"])');
-                if (!remainingVisibleCards) closeInputContainer();
-            });
-            card.querySelector('.food-card-remove-btn').addEventListener('click', () => card.remove());
+            }
+            
+            const removeBtn = card.querySelector('.food-card-remove-btn');
+            if (removeBtn) {
+                removeBtn.addEventListener('click', () => card.remove());
+            }
         });
     }
 
@@ -306,10 +1790,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateMacrosOnPortionChange(quantity, unit, originalData, card) {
         const { calories, protein, carbs, fat } = calculateFinalMacros(quantity, unit, originalData);
-        card.querySelector('.res-calories').textContent = `${calories} kcal`;
-        card.querySelector('.res-protein').textContent = `${protein}g`;
-        card.querySelector('.res-carbs').textContent = `${carbs}g`;
-        card.querySelector('.res-fat').textContent = `${fat}g`;
+        const calEl = card.querySelector('.res-calories');
+        const proteinEl = card.querySelector('.res-protein');
+        const carbsEl = card.querySelector('.res-carbs');
+        const fatEl = card.querySelector('.res-fat');
+        
+        if (calEl) calEl.textContent = `${calories} kcal`;
+        if (proteinEl) proteinEl.textContent = `${protein}g`;
+        if (carbsEl) carbsEl.textContent = `${carbs}g`;
+        if (fatEl) fatEl.textContent = `${fat}g`;
     }
 
     function addFoodToMeal(mealType, foodItem) {
@@ -318,6 +1807,7 @@ document.addEventListener('DOMContentLoaded', () => {
         saveDailyData();
         renderAllMeals();
         updateDashboard();
+        generateAnalytics(); // Update analytics with new data
         initializeEventListeners(); // Re-initialize listeners after meal is added
     }
 
@@ -327,109 +1817,8 @@ document.addEventListener('DOMContentLoaded', () => {
         saveDailyData();
         renderAllMeals();
         updateDashboard();
+        generateAnalytics(); // Update analytics with new data
         initializeEventListeners(); // Re-initialize listeners after meal is deleted
-    }
-
-    function recalculateTotals() {
-        dailyData.totals = { calories: 0, protein: 0, carbs: 0, fat: 0 };
-        for (const mealType in dailyData.meals) {
-            dailyData.meals[mealType].forEach(item => {
-                const nutrients = item.nutrients || {};
-                dailyData.totals.calories += nutrients.calories || 0;
-                dailyData.totals.protein += nutrients.protein || 0;
-                dailyData.totals.carbs += nutrients.carbs || 0;
-                dailyData.totals.fat += nutrients.fat || 0;
-            });
-        }
-    }
-    
-    function updateDashboard() {
-        totalCaloriesEl.textContent = dailyData.totals.calories;
-        totalProteinEl.textContent = dailyData.totals.protein;
-        calorieGoalDisplay.textContent = dailyData.goals.calories;
-        proteinGoalDisplay.textContent = dailyData.goals.protein;
-        updateProgressRing(calorieRing, dailyData.totals.calories, dailyData.goals.calories);
-        updateProgressRing(proteinRing, dailyData.totals.protein, dailyData.goals.protein);
-    }
-
-    function updateProgressRing(ringElement, current, goal) {
-        const radius = ringElement.r.baseVal.value;
-        const circumference = 2 * Math.PI * radius;
-        let progress = goal > 0 ? current / goal : 0;
-        if (progress > 1) progress = 1;
-        const offset = circumference - progress * circumference;
-        ringElement.style.strokeDashoffset = isNaN(offset) ? circumference : offset;
-    }
-    
-    function updateGoals() {
-        dailyData.goals.calories = parseInt(calorieGoalInput.value) || 0;
-        dailyData.goals.protein = parseInt(proteinGoalInput.value) || 0;
-        saveDailyData();
-        updateDashboard();
-        goalModal.classList.add('hidden');
-    }
-    
-    function renderAllMeals() {
-        for (const mealType in dailyData.meals) {
-            const listEl = document.getElementById(`${mealType}-list`);
-            const caloriesEl = document.getElementById(`${mealType}-calories`);
-            let mealCalories = 0;
-            if (dailyData.meals[mealType].length === 0) {
-                listEl.innerHTML = `<p style="text-align:center; color: var(--subtle-text-color); padding: 1rem 0;">No items logged yet.</p>`;
-            } else {
-                listEl.innerHTML = '';
-                dailyData.meals[mealType].forEach(item => {
-                    const li = document.createElement('li');
-                    const nutrients = item.nutrients || {};
-                    mealCalories += nutrients.calories || 0;
-                    li.innerHTML = `
-                        <div class="meal-item-view">
-                            <div class="meal-item-info">
-                                <span class="meal-item-name">${item.name}</span>
-                                <span class="meal-item-details">${item.portion}${item.unit} &bull; P:${nutrients.protein}g C:${nutrients.carbs}g F:${nutrients.fat}g</span>
-                            </div>
-                            <div class="meal-item-actions">
-                                <span class="meal-item-calories">${nutrients.calories} kcal</span>
-                                <button class="meal-item-delete" title="Delete item">&times;</button>
-                            </div>
-                        </div>
-                        <div class="edit-dropdown hidden">
-                            <input type="number" value="${item.portion}" class="edit-quantity"/>
-                            <select class="edit-unit">
-                                <option value="g" ${item.unit === 'g' ? 'selected' : ''}>g</option>
-                                <option value="ml" ${item.unit === 'ml' ? 'selected' : ''}>ml</option>
-                                <option value="oz" ${item.unit === 'oz' ? 'selected' : ''}>oz</option>
-                                ${item.gramsPerPiece ? `<option value="pcs" ${item.unit === 'pcs' ? 'selected' : ''}>pcs</option>` : ''}
-                            </select>
-                        </div>
-                    `;
-                    
-                    li.querySelector('.meal-item-info').addEventListener('click', () => {
-                        li.querySelector('.edit-dropdown').classList.toggle('hidden');
-                    });
-                    
-                    const editQuantityInput = li.querySelector('.edit-quantity');
-                    const editUnitSelect = li.querySelector('.edit-unit');
-                    const updateItemHandler = () => {
-                        const newQuantity = parseFloat(editQuantityInput.value);
-                        const newUnit = editUnitSelect.value;
-                        updateItem(mealType, item.id, newQuantity, newUnit);
-                    };
-                    editQuantityInput.addEventListener('change', updateItemHandler);
-                    editUnitSelect.addEventListener('change', updateItemHandler);
-
-                    li.querySelector('.meal-item-delete').addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        deleteItem(mealType, item.id);
-                    });
-                    listEl.appendChild(li);
-                });
-            }
-            caloriesEl.textContent = `${mealCalories} kcal`;
-        }
-        if (window.lucide?.createIcons) {
-            lucide.createIcons();
-        }
     }
 
     function updateItem(mealType, itemId, newQuantity, newUnit) {
@@ -441,28 +1830,1121 @@ document.addEventListener('DOMContentLoaded', () => {
         let totalGrams = newQuantity;
         if (newUnit === 'pcs' && item.gramsPerPiece) totalGrams = newQuantity * item.gramsPerPiece;
         else if (newUnit === 'oz') totalGrams = newQuantity * 28.35;
-        item.nutrients.calories = Math.round(item.nutrientsPerGram.calories * totalGrams);
-        item.nutrients.protein = Math.round(item.nutrientsPerGram.protein * totalGrams);
-        item.nutrients.carbs = Math.round(item.nutrientsPerGram.carbs * totalGrams);
-        item.nutrients.fat = Math.round(item.nutrientsPerGram.fat * totalGrams);
+        if (item.nutrientsPerGram) {
+            item.nutrients.calories = Math.round(item.nutrientsPerGram.calories * totalGrams);
+            item.nutrients.protein = Math.round(item.nutrientsPerGram.protein * totalGrams);
+            item.nutrients.carbs = Math.round(item.nutrientsPerGram.carbs * totalGrams);
+            item.nutrients.fat = Math.round(item.nutrientsPerGram.fat * totalGrams);
+        }
         recalculateTotals();
         saveDailyData();
         renderAllMeals();
         updateDashboard();
+        generateAnalytics(); // Update analytics with new data
     }
-    
-    function saveDailyData() {
-        localStorage.setItem('calorieTrackerData', JSON.stringify(dailyData));
+
+    // Make functions globally available
+    window.showUploadOption = showUploadOption;
+    window.showCaptureOption = showCaptureOption;
+    window.handleImageUpload = handleImageUpload;
+    window.analyzeUploadedImage = analyzeUploadedImage;
+    window.clearUpload = clearUpload;
+    window.closeCamera = closeCamera;
+    window.capturePhoto = capturePhoto;
+    window.deleteConfirmedFood = deleteConfirmedFood;
+    window.addConfirmedFood = addConfirmedFood;
+    window.stopCamera = stopCamera;
+    window.toggleAutoDetection = toggleAutoDetection;
+    window.retakePhoto = retakePhoto;
+
+    function showUploadOption() {
+        if (mealEntryContent) {
+            mealEntryContent.innerHTML = `
+                <div class="upload-section">
+                    <div class="upload-area">
+                        <input type="file" id="image-upload-input" accept="image/*" style="display: none;">
+                        <div class="upload-zone" onclick="document.getElementById('image-upload-input').click()">
+                            <i data-lucide="upload-cloud"></i>
+                            <p>Click to select an image</p>
+                            <small>Supports: JPG, PNG, WebP</small>
+                        </div>
+                    </div>
+                    <div id="upload-preview" class="hidden">
+                        <img id="uploaded-image-preview" style="max-width: 100%; border-radius: 8px; margin: 16px 0;">
+                        <div class="upload-actions">
+                            <button class="btn btn-primary" onclick="analyzeUploadedImage()" id="analyze-btn">
+                                <i data-lucide="search"></i>
+                                Analyze Image
+                            </button>
+                            <button class="btn btn-secondary" onclick="clearUpload()">
+                                <i data-lucide="x"></i>
+                                Clear
+                            </button>
+                        </div>
+                    </div>
+                    <div id="loading-section" class="hidden">
+                        <div class="spinner"></div>
+                        <p>Analyzing your food...</p>
+                    </div>
+                    <div id="results-section" class="hidden"></div>
+                </div>
+            `;
+        }
+        
+        // Add event listener for file input
+        const fileInput = document.getElementById('image-upload-input');
+        if (fileInput) {
+            fileInput.addEventListener('change', handleImageUpload);
+        }
+        
+        if (window.lucide && window.lucide.createIcons) {
+            lucide.createIcons();
+        }
     }
-    
-    function loadDailyData() {
-        const savedData = localStorage.getItem('calorieTrackerData');
-        if (savedData) {
-            const parsedData = JSON.parse(savedData);
-            if (parsedData.date === new Date().toLocaleDateString()) {
-                dailyData = { ...dailyData, ...parsedData };
+
+    function showCaptureOption() {
+        if (mealEntryContent) {
+            mealEntryContent.innerHTML = `
+                <div class="camera-section">
+                    <video id="camera-video" autoplay playsinline style="width: 100%; max-height: 300px; border-radius: 8px;"></video>
+                    <div class="camera-overlay">
+                        <div class="scanning-indicator hidden" id="scanning-indicator">
+                            <div class="scan-animation"></div>
+                            <p>Scanning for food...</p>
+                        </div>
+                    </div>
+                    <div class="camera-controls">
+                        <button class="btn btn-secondary" onclick="closeCamera()">
+                            <i data-lucide="x"></i>
+                            Close Camera
+                        </button>
+                    </div>
+                    <div id="loading-section" class="hidden">
+                        <div class="spinner"></div>
+                        <p>Analyzing your food...</p>
+                    </div>
+                    <div id="results-section" class="hidden"></div>
+                </div>
+            `;
+        }
+        
+        startCamera();
+        if (window.lucide && window.lucide.createIcons) {
+            lucide.createIcons();
+        }
+    }
+
+    function handleImageUpload(event) {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                currentImageBase64 = e.target.result;
+                document.getElementById('uploaded-image-preview').src = currentImageBase64;
+                document.getElementById('upload-preview').classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+    }
+
+    async function analyzeUploadedImage() {
+        if (!currentImageBase64) return;
+        
+        // Show loading
+        document.getElementById('upload-preview').classList.add('hidden');
+        document.getElementById('loading-section').classList.remove('hidden');
+        
+        try {
+            // Simulate API call - replace with actual API
+            const response = await fetch('/api/analyze-image', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image: currentImageBase64 })
+            });
+            
+            // For now, use mock data
+            setTimeout(() => {
+                const mockResults = [
+                    { name: "Grilled Chicken Breast", calories: 231, protein: 43.5, carbs: 0, fat: 5, portion: 100, unit: "g" },
+                    { name: "Brown Rice", calories: 150, protein: 3, carbs: 33, fat: 1, portion: 80, unit: "g" }
+                ];
+                
+                displayFoodResults(mockResults);
+            }, 2000);
+        } catch (error) {
+            console.error('Error analyzing image:', error);
+            
+            // Fallback mock data
+            const mockResults = [
+                { name: "Mixed Meal", calories: 400, protein: 35, carbs: 25, fat: 15, portion: 150, unit: "g" }
+            ];
+            displayFoodResults(mockResults);
+        }
+    }
+
+    function clearUpload() {
+        currentImageBase64 = null;
+        document.getElementById('upload-preview').classList.add('hidden');
+        document.getElementById('image-upload-input').value = '';
+        document.getElementById('loading-section').classList.add('hidden');
+        document.getElementById('results-section').classList.add('hidden');
+    }
+
+
+
+    function closeCamera() {
+        if (activeStream) {
+            activeStream.getTracks().forEach(track => track.stop());
+            activeStream = null;
+        }
+        if (scanningInterval) {
+            clearInterval(scanningInterval);
+            scanningInterval = null;
+        }
+        // Go back to meal entry options
+        openMealEntry(currentMealType);
+    }
+
+    async function autoCapture() {
+        const video = document.getElementById('camera-video');
+        if (!video || !canvas) return;
+        
+        try {
+            // Show scanning indicator
+            const indicator = document.getElementById('scanning-indicator');
+            if (indicator) indicator.classList.remove('hidden');
+            
+            // Capture current frame
+            const ctx = canvas.getContext('2d');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            ctx.drawImage(video, 0, 0);
+            
+            const imageBase64 = canvas.toDataURL('image/jpeg', 0.8);
+            currentImageBase64 = imageBase64;
+            
+            // Hide scanning indicator
+            if (indicator) indicator.classList.add('hidden');
+            
+            // Simulate API analysis - replace with actual API call
+            setTimeout(() => {
+                const mockResults = [
+                    { name: "Apple", calories: 95, protein: 0.5, carbs: 25, fat: 0.3, portion: 1, unit: "piece" },
+                    { name: "Banana", calories: 105, protein: 1.3, carbs: 27, fat: 0.4, portion: 1, unit: "piece" }
+                ];
+                
+                // Stop camera and show results
+                if (activeStream) {
+                    activeStream.getTracks().forEach(track => track.stop());
+                    activeStream = null;
+                }
+                if (scanningInterval) {
+                    clearInterval(scanningInterval);
+                    scanningInterval = null;
+                }
+                
+                displayFoodResults(mockResults);
+            }, 1500);
+            
+        } catch (error) {
+            console.error('Auto capture error:', error);
+            if (indicator) indicator.classList.add('hidden');
+        }
+    }
+
+    function displayFoodResults(results) {
+        document.getElementById('loading-section').classList.add('hidden');
+        
+        const resultsSection = document.getElementById('results-section');
+        if (resultsSection) {
+            resultsSection.innerHTML = `
+                <div class="food-results">
+                    <h3>Detected Foods:</h3>
+                    ${results.map((item, index) => `
+                        <div class="food-result-item" id="food-item-${index}">
+                            <div class="food-info">
+                                <h4>${item.name}</h4>
+                                <div class="portion-controls">
+                                    <label>Portion:</label>
+                                    <input type="number" value="${item.portion}" id="portion-${index}" class="portion-input">
+                                    <select id="unit-${index}" class="unit-select">
+                                        <option value="g" ${item.unit === 'g' ? 'selected' : ''}>g</option>
+                                        <option value="ml" ${item.unit === 'ml' ? 'selected' : ''}>ml</option>
+                                        <option value="piece" ${item.unit === 'piece' ? 'selected' : ''}>piece</option>
+                                        <option value="cup" ${item.unit === 'cup' ? 'selected' : ''}>cup</option>
+                                    </select>
+                                </div>
+                                <div class="nutrition-display">
+                                    <span>Calories: <strong id="cal-${index}">${item.calories}</strong></span>
+                                    <span>Protein: <strong id="protein-${index}">${item.protein}g</strong></span>
+                                    <span>Carbs: <strong id="carbs-${index}">${item.carbs}g</strong></span>
+                                    <span>Fat: <strong id="fat-${index}">${item.fat}g</strong></span>
+                                </div>
+                            </div>
+                            <div class="food-actions">
+                                <button class="btn btn-primary" onclick="addConfirmedFood(${index})">
+                                    <i data-lucide="plus"></i>
+                                    Add
+                                </button>
+                                <button class="btn btn-danger" onclick="deleteConfirmedFood(${index})">
+                                    <i data-lucide="trash-2"></i>
+                                    Delete
+                                </button>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            resultsSection.classList.remove('hidden');
+            
+            // Store results globally and add portion change listeners
+            window.currentFoodResults = results;
+            results.forEach((_, index) => {
+                const portionInput = document.getElementById(`portion-${index}`);
+                const unitSelect = document.getElementById(`unit-${index}`);
+                
+                if (portionInput) {
+                    portionInput.addEventListener('input', () => updateNutrition(index));
+                }
+                if (unitSelect) {
+                    unitSelect.addEventListener('change', () => updateNutrition(index));
+                }
+            });
+        }
+        
+        if (window.lucide && window.lucide.createIcons) {
+            lucide.createIcons();
+        }
+    }
+
+    function updateNutrition(index) {
+        const originalItem = window.currentFoodResults[index];
+        const portionInput = document.getElementById(`portion-${index}`);
+        const unitSelect = document.getElementById(`unit-${index}`);
+        
+        if (!portionInput || !unitSelect || !originalItem) return;
+        
+        const newPortion = parseFloat(portionInput.value) || 0;
+        const newUnit = unitSelect.value;
+        const originalPortion = originalItem.portion;
+        
+        // Calculate nutrition based on portion change
+        const multiplier = newPortion / originalPortion;
+        
+        const newCalories = Math.round(originalItem.calories * multiplier);
+        const newProtein = Math.round(originalItem.protein * multiplier * 10) / 10;
+        const newCarbs = Math.round(originalItem.carbs * multiplier * 10) / 10;
+        const newFat = Math.round(originalItem.fat * multiplier * 10) / 10;
+        
+        // Update display
+        document.getElementById(`cal-${index}`).textContent = newCalories;
+        document.getElementById(`protein-${index}`).textContent = newProtein + 'g';
+        document.getElementById(`carbs-${index}`).textContent = newCarbs + 'g';
+        document.getElementById(`fat-${index}`).textContent = newFat + 'g';
+    }
+
+    function addConfirmedFood(index) {
+        const originalItem = window.currentFoodResults[index];
+        const portionInput = document.getElementById(`portion-${index}`);
+        const unitSelect = document.getElementById(`unit-${index}`);
+        
+        if (!originalItem || !portionInput || !unitSelect) return;
+        
+        const newPortion = parseFloat(portionInput.value) || 0;
+        const newUnit = unitSelect.value;
+        const multiplier = newPortion / originalItem.portion;
+        
+        const foodItem = {
+            name: originalItem.name,
+            calories: Math.round(originalItem.calories * multiplier),
+            protein: Math.round(originalItem.protein * multiplier * 10) / 10,
+            carbs: Math.round(originalItem.carbs * multiplier * 10) / 10,
+            fat: Math.round(originalItem.fat * multiplier * 10) / 10,
+            portion: newPortion,
+            unit: newUnit
+        };
+        
+        // Add to the selected meal
+        dailyData.meals[currentMealType].push(foodItem);
+        
+        // Update calculations and UI
+        recalculateTotals();
+        saveDailyData();
+        renderAllMeals();
+        updateDashboard();
+        
+        // Close modal
+        closeModal('meal-entry-modal');
+        
+        // Show success message
+        alert(`${foodItem.name} added to ${currentMealType}!`);
+    }
+
+    function deleteConfirmedFood(index) {
+        const foodItem = document.getElementById(`food-item-${index}`);
+        if (foodItem) {
+            foodItem.remove();
+        }
+        
+        // Remove from results array
+        if (window.currentFoodResults) {
+            window.currentFoodResults.splice(index, 1);
+        }
+    }
+
+    function openCamera() {
+        if (mealEntryContent) {
+            mealEntryContent.innerHTML = `
+                <div class="camera-section">
+                    <video id="camera-video" autoplay playsinline></video>
+                    <div class="camera-overlay">
+                        <div class="scanning-indicator hidden" id="scanning-indicator">
+                            <div class="scan-animation"></div>
+                            <p>Scanning for food...</p>
+                        </div>
+                        <div class="detection-frame"></div>
+                    </div>
+                    <div class="camera-controls">
+                        <button class="btn btn-success" id="auto-detect-btn" onclick="toggleAutoDetection()">
+                            <i data-lucide="eye"></i>
+                            <span id="auto-detect-text">Start Auto Detection</span>
+                        </button>
+                        <button class="btn btn-primary" onclick="capturePhoto()">
+                            <i data-lucide="camera"></i>
+                            Capture Photo
+                        </button>
+                        <button class="btn btn-secondary" onclick="stopCamera()">
+                            <i data-lucide="x"></i>
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+        
+        startCamera();
+        if (window.lucide && window.lucide.createIcons) {
+            lucide.createIcons();
+        }
+    }
+
+  
+
+    function retakePhoto() {
+        // Reset to the modal camera system
+        openInputContainer(currentMealType);
+    }
+
+    let autoDetectionActive = false;
+    let autoDetectionInterval = null;
+
+    function toggleAutoDetection() {
+        const btn = document.getElementById('auto-detect-btn');
+        const text = document.getElementById('auto-detect-text');
+        const indicator = document.getElementById('scanning-indicator');
+        
+        if (!autoDetectionActive) {
+            autoDetectionActive = true;
+            btn.classList.remove('btn-success');
+            btn.classList.add('btn-warning');
+            text.textContent = 'Stop Auto Detection';
+            indicator.classList.remove('hidden');
+            
+            // Start automatic scanning every 3 seconds
+            autoDetectionInterval = setInterval(autoScanForFood, 3000);
+            console.log('Auto detection started');
+        } else {
+            autoDetectionActive = false;
+            btn.classList.remove('btn-warning');
+            btn.classList.add('btn-success');
+            text.textContent = 'Start Auto Detection';
+            indicator.classList.add('hidden');
+            
+            if (autoDetectionInterval) {
+                clearInterval(autoDetectionInterval);
+                autoDetectionInterval = null;
+            }
+            console.log('Auto detection stopped');
+        }
+    }
+
+    async function autoScanForFood() {
+        if (!autoDetectionActive) return;
+        
+        const video = document.getElementById('camera-video');
+        if (!video || !canvas) return;
+        
+        try {
+            // Capture current frame
+            const ctx = canvas.getContext('2d');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            ctx.drawImage(video, 0, 0);
+            
+            const imageBase64 = canvas.toDataURL('image/jpeg', 0.8);
+            
+            // Send to server for analysis
+            const response = await fetch('/analyze-food', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ 
+                    image: imageBase64.split(',')[1] // Remove data:image/jpeg;base64, prefix
+                })
+            });
+            
+            if (response.ok) {
+                const result = await response.json();
+                console.log('Auto detection result:', result);
+                
+                // If food is detected with confidence, automatically process it
+                if (result.detected && result.confidence > 0.7) {
+                    autoDetectionActive = false;
+                    clearInterval(autoDetectionInterval);
+                    
+                    currentImageBase64 = imageBase64;
+                    displayAutoDetectionResults(result.foods);
+                }
+            }
+        } catch (error) {
+            console.error('Auto detection error:', error);
+        }
+    }
+
+    function displayAutoDetectionResults(foods) {
+        if (mealEntryContent) {
+            mealEntryContent.innerHTML = `
+                <div class="auto-detection-results">
+                    <div class="detection-header">
+                        <i data-lucide="check-circle" style="color: #22c55e;"></i>
+                        <h3>Food Detected Automatically!</h3>
+                    </div>
+                    <div class="detected-foods">
+                        ${foods.map(food => `
+                            <div class="food-item-result">
+                                <h4>${food.name}</h4>
+                                <div class="nutrition-info">
+                                    <span><strong>Calories:</strong> ${food.calories}</span>
+                                    <span><strong>Protein:</strong> ${food.protein}g</span>
+                                    <span><strong>Carbs:</strong> ${food.carbs}g</span>
+                                    <span><strong>Fat:</strong> ${food.fat}g</span>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div class="detection-actions">
+                        <button class="btn btn-primary" onclick="saveDetectedFoods(${JSON.stringify(foods).replace(/"/g, '&quot;')})">
+                            <i data-lucide="plus"></i>
+                            Add to ${currentMealType}
+                        </button>
+                        <button class="btn btn-secondary" onclick="retakePhoto()">
+                            <i data-lucide="camera"></i>
+                            Scan Again
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+        
+        stopCamera();
+        if (window.lucide && window.lucide.createIcons) {
+            lucide.createIcons();
+        }
+    }
+
+    function saveDetectedFoods(foods) {
+        foods.forEach(food => {
+            addMeal(currentMealType, food.name, food.calories, food.protein, food.carbs, food.fat);
+        });
+        
+        renderAllMeals();
+        updateDashboard();
+        closeModal('meal-entry-modal');
+    }
+
+    window.saveDetectedFoods = saveDetectedFoods;
+
+    function capturePhoto() {
+        const video = document.getElementById('camera-video');
+        if (!video) return;
+        
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0);
+        
+        currentImageBase64 = canvas.toDataURL('image/jpeg', 0.8);
+        
+        if (mealEntryContent) {
+            mealEntryContent.innerHTML = `
+                <div class="photo-preview">
+                    <img src="${currentImageBase64}" alt="Captured food" style="max-width: 100%; border-radius: 8px;">
+                    <div class="photo-actions">
+                        <button class="btn btn-primary" onclick="identifyFood()">
+                            <i data-lucide="search"></i>
+                            Identify Food
+                        </button>
+                        <button class="btn btn-secondary" onclick="retakePhoto()">
+                            <i data-lucide="camera"></i>
+                            Retake Photo
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+        
+        stopCamera();
+        if (window.lucide && window.lucide.createIcons) {
+            lucide.createIcons();
+        }
+    }
+
+    async function identifyFood() {
+        if (!currentImageBase64) return;
+        
+        if (mealEntryContent) {
+            mealEntryContent.innerHTML = `
+                <div class="analyzing">
+                    <div class="spinner"></div>
+                    <p>Analyzing your food...</p>
+                </div>
+            `;
+        }
+        
+        try {
+            const response = await fetch('/check_models.js');
+            const result = await response.json();
+            
+            setTimeout(() => {
+                const mockResults = [
+                    { name: "Grilled Chicken Breast", calories: 231, protein: 43.5, carbs: 0, fat: 5 },
+                    { name: "Steamed Broccoli", calories: 25, protein: 3, carbs: 5, fat: 0.3 },
+                    { name: "Brown Rice", calories: 150, protein: 3, carbs: 33, fat: 1 }
+                ];
+                
+                displayIdentificationResults(mockResults);
+            }, 2000);
+        } catch (error) {
+            console.error('Error identifying food:', error);
+            
+            const mockResults = [
+                { name: "Mixed Meal", calories: 400, protein: 35, carbs: 25, fat: 15 }
+            ];
+            displayIdentificationResults(mockResults);
+        }
+    }
+
+    function displayIdentificationResults(results) {
+        if (mealEntryContent) {
+            mealEntryContent.innerHTML = `
+                <div class="identification-results">
+                    <h3>Identified Foods:</h3>
+                    <div class="results-list">
+                        ${results.map((item, index) => `
+                            <div class="result-item">
+                                <div class="result-info">
+                                    <h4>${item.name}</h4>
+                                    <p>${item.calories} kcal • ${item.protein}g protein</p>
+                                </div>
+                                <button class="btn btn-primary" onclick="addIdentifiedItem(${index})">Add</button>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <button class="btn btn-secondary" onclick="manualEntry()">
+                        <i data-lucide="edit-3"></i>
+                        Manual Entry Instead
+                    </button>
+                </div>
+            `;
+        }
+        
+        window.identificationResults = results;
+        if (window.lucide && window.lucide.createIcons) {
+            lucide.createIcons();
+        }
+    }
+
+    window.addIdentifiedItem = function(index) {
+        const item = window.identificationResults[index];
+        dailyData.meals[currentMealType].push(item);
+        
+        recalculateTotals();
+        saveDailyData();
+        renderAllMeals();
+        updateDashboard();
+        closeModal('meal-entry-modal');
+    };
+
+    function deleteMealItem(mealType, index) {
+        if (dailyData.meals[mealType] && dailyData.meals[mealType][index]) {
+            dailyData.meals[mealType].splice(index, 1);
+        }
+    }
+
+    function recalculateTotals() {
+        dailyData.totals = { calories: 0, protein: 0, carbs: 0, fat: 0 };
+        
+        Object.values(dailyData.meals).forEach(meal => {
+            meal.forEach(item => {
+                // Handle both old format (direct properties) and new format (nested nutrients)
+                const nutrients = item.nutrients || item;
+                dailyData.totals.calories += nutrients.calories || 0;
+                dailyData.totals.protein += nutrients.protein || nutrients.proteinGrams || 0;
+                dailyData.totals.carbs += nutrients.carbs || nutrients.carbsGrams || 0;
+                dailyData.totals.fat += nutrients.fat || nutrients.fatGrams || 0;
+            });
+        });
+        
+        console.log('Recalculated totals:', dailyData.totals); // Debug log
+    }
+
+    function updateDashboard() {
+        console.log('Updating dashboard with totals:', dailyData.totals); // Debug log
+        
+        // Update totals display
+        if (totalCaloriesEl) totalCaloriesEl.textContent = Math.round(dailyData.totals.calories);
+        if (totalProteinEl) totalProteinEl.textContent = Math.round(dailyData.totals.protein);
+        if (calorieGoalDisplay) calorieGoalDisplay.textContent = dailyData.goals.calories;
+        if (proteinGoalDisplay) proteinGoalDisplay.textContent = dailyData.goals.protein;
+        
+        // Update progress rings
+        updateProgressRing(calorieRing, dailyData.totals.calories, dailyData.goals.calories);
+        updateProgressRing(proteinRing, dailyData.totals.protein, dailyData.goals.protein);
+        
+        console.log('Dashboard updated - Calories:', dailyData.totals.calories, 'Protein:', dailyData.totals.protein); // Debug log
+    }
+
+    function updateProgressRing(ring, current, goal) {
+        if (!ring) return;
+        
+        const percentage = Math.min((current / goal) * 100, 100);
+        const circumference = 2 * Math.PI * 54; // radius = 54
+        const offset = circumference - (percentage / 100) * circumference;
+        
+        ring.style.strokeDasharray = circumference;
+        ring.style.strokeDashoffset = offset;
+    }
+
+    function renderAllMeals() {
+        for (const mealType in dailyData.meals) {
+            const listEl = document.getElementById(`${mealType}-list`);
+            const caloriesEl = document.getElementById(`${mealType}-calories`);
+            let mealCalories = 0;
+            if (dailyData.meals[mealType].length === 0) {
+                if (listEl) {
+                    listEl.innerHTML = `<p style="text-align:center; color: var(--subtle-text-color); padding: 1rem 0;">No items logged yet.</p>`;
+                }
+            } else {
+                if (listEl) {
+                    listEl.innerHTML = '';
+                    dailyData.meals[mealType].forEach(item => {
+                        const li = document.createElement('li');
+                        const nutrients = item.nutrients || {};
+                        mealCalories += nutrients.calories || 0;
+                        li.innerHTML = `
+                            <div class="meal-item-view">
+                                <div class="meal-item-info">
+                                    <span class="meal-item-name">${item.name}</span>
+                                    <span class="meal-item-details">${item.portion || ''}${item.unit || ''} &bull; P:${nutrients.protein || 0}g C:${nutrients.carbs || 0}g F:${nutrients.fat || 0}g</span>
+                                </div>
+                                <div class="meal-item-actions">
+                                    <span class="meal-item-calories">${nutrients.calories || 0} kcal</span>
+                                    <button class="meal-item-delete" title="Delete item">&times;</button>
+                                </div>
+                            </div>
+                            <div class="edit-dropdown hidden">
+                                <input type="number" value="${item.portion || 0}" class="edit-quantity"/>
+                                <select class="edit-unit">
+                                    <option value="g" ${item.unit === 'g' ? 'selected' : ''}>g</option>
+                                    <option value="ml" ${item.unit === 'ml' ? 'selected' : ''}>ml</option>
+                                    <option value="oz" ${item.unit === 'oz' ? 'selected' : ''}>oz</option>
+                                    ${item.gramsPerPiece ? `<option value="pcs" ${item.unit === 'pcs' ? 'selected' : ''}>pcs</option>` : ''}
+                                </select>
+                            </div>
+                        `;
+                        
+                        li.querySelector('.meal-item-info').addEventListener('click', () => {
+                            li.querySelector('.edit-dropdown').classList.toggle('hidden');
+                        });
+                        
+                        const editQuantityInput = li.querySelector('.edit-quantity');
+                        const editUnitSelect = li.querySelector('.edit-unit');
+                        const updateItemHandler = () => {
+                            const newQuantity = parseFloat(editQuantityInput.value);
+                            const newUnit = editUnitSelect.value;
+                            updateItem(mealType, item.id, newQuantity, newUnit);
+                        };
+                        if (editQuantityInput) editQuantityInput.addEventListener('change', updateItemHandler);
+                        if (editUnitSelect) editUnitSelect.addEventListener('change', updateItemHandler);
+
+                        li.querySelector('.meal-item-delete').addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            deleteItem(mealType, item.id);
+                        });
+                        listEl.appendChild(li);
+                    });
+                }
+            }
+            if (caloriesEl) {
+                caloriesEl.textContent = `${mealCalories} kcal`;
             }
         }
+        if (window.lucide?.createIcons) {
+            lucide.createIcons();
+        }
+    }
+
+    function saveGoals() {
+        const newCalorieGoal = parseInt(calorieGoalInput?.value) || 2000;
+        const newProteinGoal = parseInt(proteinGoalInput?.value) || 120;
+        
+        dailyData.goals.calories = newCalorieGoal;
+        dailyData.goals.protein = newProteinGoal;
+        
+        updateDashboard();
         saveDailyData();
     }
+
+    // === HISTORY FUNCTIONALITY ===
+    
+    let currentHistoryView = 'months'; // 'months', 'weeks', 'days', 'detail'
+    let selectedYear = new Date().getFullYear();
+    let selectedMonth = null;
+    let selectedWeek = null;
+    let selectedDay = null;
+
+    function initializeHistory() {
+        console.log('🔄 Initializing history view...');
+        
+        // Set current year
+        document.getElementById('current-year').textContent = selectedYear;
+        
+        // Reset to months view
+        currentHistoryView = 'months';
+        showMonthsView();
+        
+        // Add event listeners for history navigation
+        addHistoryEventListeners();
+        
+        // Load month data
+        loadMonthsData();
+        
+        // Update year navigation state
+        updateYearNavigationState();
+    }
+
+    function addHistoryEventListeners() {
+        // Year navigation
+        const prevYearBtn = document.getElementById('prev-year');
+        const nextYearBtn = document.getElementById('next-year');
+        
+        if (prevYearBtn) {
+            prevYearBtn.addEventListener('click', () => {
+                if (selectedYear > 2025) { // Prevent going below 2025
+                    selectedYear--;
+                    document.getElementById('current-year').textContent = selectedYear;
+                    loadMonthsData();
+                    updateYearNavigationState();
+                }
+            });
+        }
+        
+        if (nextYearBtn) {
+            nextYearBtn.addEventListener('click', () => {
+                selectedYear++;
+                document.getElementById('current-year').textContent = selectedYear;
+                loadMonthsData();
+                updateYearNavigationState();
+            });
+        }
+
+        // Month cards
+        const monthCards = document.querySelectorAll('.month-card');
+        monthCards.forEach(card => {
+            card.addEventListener('click', () => {
+                const month = parseInt(card.dataset.month);
+                showWeeksView(month);
+            });
+        });
+
+        // Breadcrumb navigation
+        const backToMonthsBtn = document.getElementById('back-to-months');
+        const backToWeeksBtn = document.getElementById('back-to-weeks');
+        const backToDaysBtn = document.getElementById('back-to-days');
+        
+        if (backToMonthsBtn) {
+            backToMonthsBtn.addEventListener('click', showMonthsView);
+        }
+        if (backToWeeksBtn) {
+            backToWeeksBtn.addEventListener('click', () => showWeeksView(selectedMonth));
+        }
+        if (backToDaysBtn) {
+            backToDaysBtn.addEventListener('click', () => showDaysView(selectedWeek));
+        }
+    }
+
+    function showMonthsView() {
+        document.getElementById('months-grid').style.display = 'grid';
+        document.getElementById('weeks-grid').style.display = 'none';
+        document.getElementById('days-grid').style.display = 'none';
+        document.getElementById('day-detail').style.display = 'none';
+        currentHistoryView = 'months';
+        loadMonthsData();
+    }
+
+    function showWeeksView(month) {
+        selectedMonth = month;
+        const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                          'July', 'August', 'September', 'October', 'November', 'December'];
+        
+        document.getElementById('months-grid').style.display = 'none';
+        document.getElementById('weeks-grid').style.display = 'block';
+        document.getElementById('days-grid').style.display = 'none';
+        document.getElementById('day-detail').style.display = 'none';
+        
+        document.getElementById('selected-month-year').textContent = `${monthNames[month]} ${selectedYear}`;
+        currentHistoryView = 'weeks';
+        loadWeeksData(month);
+    }
+
+    function showDaysView(weekData) {
+        selectedWeek = weekData;
+        
+        document.getElementById('months-grid').style.display = 'none';
+        document.getElementById('weeks-grid').style.display = 'none';
+        document.getElementById('days-grid').style.display = 'block';
+        document.getElementById('day-detail').style.display = 'none';
+        
+        document.getElementById('selected-week-range').textContent = weekData.range;
+        currentHistoryView = 'days';
+        loadDaysData(weekData);
+    }
+
+    function showDayDetail(dayData) {
+        selectedDay = dayData;
+        
+        document.getElementById('months-grid').style.display = 'none';
+        document.getElementById('weeks-grid').style.display = 'none';
+        document.getElementById('days-grid').style.display = 'none';
+        document.getElementById('day-detail').style.display = 'block';
+        
+        document.getElementById('selected-day-date').textContent = dayData.formattedDate;
+        currentHistoryView = 'detail';
+        loadDayDetail(dayData);
+    }
+
+    function loadMonthsData() {
+        const history = getNutritionHistory();
+        const monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun',
+                          'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+        
+        monthNames.forEach((monthId, index) => {
+            const daysElement = document.getElementById(`${monthId}-days`);
+            const avgElement = document.getElementById(`${monthId}-avg`);
+            
+            if (daysElement && avgElement) {
+                const monthData = getMonthData(history, selectedYear, index);
+                daysElement.textContent = `${monthData.daysLogged} days logged`;
+                avgElement.textContent = `${monthData.avgCalories} avg kcal`;
+            }
+        });
+    }
+
+    function getMonthData(history, year, month) {
+        let daysLogged = 0;
+        let totalCalories = 0;
+        
+        // Get all days in the month
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        
+        for (let day = 1; day <= daysInMonth; day++) {
+            const date = new Date(year, month, day);
+            const dateStr = date.toLocaleDateString();
+            
+            if (history[dateStr]) {
+                daysLogged++;
+                totalCalories += history[dateStr].totals.calories || 0;
+            }
+        }
+        
+        const avgCalories = daysLogged > 0 ? Math.round(totalCalories / daysLogged) : 0;
+        
+        return { daysLogged, avgCalories };
+    }
+
+    function loadWeeksData(month) {
+        const weeksContainer = document.getElementById('weeks-container');
+        if (!weeksContainer) return;
+        
+        weeksContainer.innerHTML = '';
+        
+        const weeks = getWeeksInMonth(selectedYear, month);
+        
+        weeks.forEach((week, index) => {
+            const weekCard = document.createElement('div');
+            weekCard.className = 'week-card';
+            weekCard.innerHTML = `
+                <h5>Week ${index + 1}</h5>
+                <div class="week-range">${week.range}</div>
+                <div class="week-stats">
+                    <span>${week.daysLogged} days logged</span>
+                    <span>${week.avgCalories} avg kcal</span>
+                </div>
+            `;
+            
+            weekCard.addEventListener('click', () => showDaysView(week));
+            weeksContainer.appendChild(weekCard);
+        });
+    }
+
+    function getWeeksInMonth(year, month) {
+        const weeks = [];
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
+        
+        let currentWeekStart = new Date(firstDay);
+        let weekNumber = 1;
+        
+        while (currentWeekStart <= lastDay) {
+            const weekEnd = new Date(currentWeekStart);
+            weekEnd.setDate(currentWeekStart.getDate() + 6);
+            
+            if (weekEnd > lastDay) {
+                weekEnd.setTime(lastDay.getTime());
+            }
+            
+            const week = {
+                weekNumber,
+                startDate: new Date(currentWeekStart),
+                endDate: new Date(weekEnd),
+                range: `${currentWeekStart.toLocaleDateString()} - ${weekEnd.toLocaleDateString()}`,
+                daysLogged: 0,
+                avgCalories: 0
+            };
+            
+            // Calculate week stats
+            const weekStats = getWeekStats(week.startDate, week.endDate);
+            week.daysLogged = weekStats.daysLogged;
+            week.avgCalories = weekStats.avgCalories;
+            
+            weeks.push(week);
+            
+            currentWeekStart.setDate(currentWeekStart.getDate() + 7);
+            weekNumber++;
+        }
+        
+        return weeks;
+    }
+
+    function getWeekStats(startDate, endDate) {
+        const history = getNutritionHistory();
+        let daysLogged = 0;
+        let totalCalories = 0;
+        
+        const currentDate = new Date(startDate);
+        while (currentDate <= endDate) {
+            const dateStr = currentDate.toLocaleDateString();
+            if (history[dateStr]) {
+                daysLogged++;
+                totalCalories += history[dateStr].totals.calories || 0;
+            }
+            currentDate.setDate(currentDate.getDate() + 1);
+        }
+        
+        const avgCalories = daysLogged > 0 ? Math.round(totalCalories / daysLogged) : 0;
+        return { daysLogged, avgCalories };
+    }
+
+    function loadDaysData(weekData) {
+        const daysContainer = document.getElementById('days-container');
+        if (!daysContainer) return;
+        
+        daysContainer.innerHTML = '';
+        
+        const history = getNutritionHistory();
+        const currentDate = new Date(weekData.startDate);
+        
+        while (currentDate <= weekData.endDate) {
+            const dateStr = currentDate.toLocaleDateString();
+            const dayData = history[dateStr];
+            
+            const dayCard = document.createElement('div');
+            dayCard.className = 'day-card';
+            
+            const dayName = currentDate.toLocaleDateString('en-US', { weekday: 'long' });
+            const dateDisplay = currentDate.toLocaleDateString();
+            
+            dayCard.innerHTML = `
+                <h5>${dayName}</h5>
+                <div class="day-date">${dateDisplay}</div>
+                <div class="day-stats">
+                    ${dayData ? `
+                        <span>${dayData.totals.calories || 0} kcal</span>
+                        <span>${dayData.totals.protein || 0}g protein</span>
+                    ` : `
+                        <span>No data logged</span>
+                    `}
+                </div>
+            `;
+            
+            if (dayData) {
+                dayCard.addEventListener('click', () => {
+                    const detailData = {
+                        date: dateStr,
+                        formattedDate: `${dayName}, ${dateDisplay}`,
+                        data: dayData
+                    };
+                    showDayDetail(detailData);
+                });
+            } else {
+                dayCard.style.opacity = '0.5';
+                dayCard.style.cursor = 'not-allowed';
+            }
+            
+            daysContainer.appendChild(dayCard);
+            currentDate.setDate(currentDate.getDate() + 1);
+        }
+    }
+
+    function loadDayDetail(dayData) {
+        const data = dayData.data;
+        
+        // Update macro values
+        document.getElementById('day-calories').textContent = data.totals.calories || 0;
+        document.getElementById('day-protein').textContent = `${data.totals.protein || 0}g`;
+        document.getElementById('day-carbs').textContent = `${data.totals.carbs || 0}g`;
+        document.getElementById('day-fat').textContent = `${data.totals.fat || 0}g`;
+        
+        // Update goal progress
+        const calorieGoal = data.goals?.calories || 2000;
+        const proteinGoal = data.goals?.protein || 120;
+        
+        document.getElementById('day-calorie-progress').textContent = 
+            `${data.totals.calories || 0} / ${calorieGoal} kcal`;
+        document.getElementById('day-protein-progress').textContent = 
+            `${data.totals.protein || 0} / ${proteinGoal}g`;
+    }
+
+    function updateYearNavigationState() {
+        const prevYearBtn = document.getElementById('prev-year');
+        if (prevYearBtn) {
+            if (selectedYear <= 2025) {
+                prevYearBtn.style.opacity = '0.5';
+                prevYearBtn.style.cursor = 'not-allowed';
+                prevYearBtn.disabled = true;
+            } else {
+                prevYearBtn.style.opacity = '1';
+                prevYearBtn.style.cursor = 'pointer';
+                prevYearBtn.disabled = false;
+            }
+        }
+    }
+
+    // --- Tab Switching Function ---
+    // --- Tab Switching Function ---
+
+
+
 });

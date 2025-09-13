@@ -4,64 +4,221 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NutriTrack AI</title>
+    <title>NutriTrack AI - Smart Nutrition Tracking</title>
+    
+    <!-- Favicon and App Icons -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="icon" type="image/png" href="/icon.svg">
+    <link rel="apple-touch-icon" href="/icon.svg">
+    <link rel="manifest" href="/manifest.json">
+    
+    <!-- Meta Tags for SEO and Social Sharing -->
+    <meta name="description" content="Smart nutrition tracking powered by AI. Track calories, protein, and macros with ease.">
+    <meta name="keywords" content="nutrition, tracking, calories, protein, health, fitness, AI">
+    <meta name="author" content="NutriTrack AI">
+    
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="NutriTrack AI - Smart Nutrition Tracking">
+    <meta property="og:description" content="Track your nutrition effortlessly with AI-powered food recognition and comprehensive analytics.">
+    <meta property="og:image" content="/icon.svg">
+    <meta property="og:type" content="website">
+    
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="NutriTrack AI">
+    <meta name="twitter:description" content="Smart nutrition tracking powered by AI">
+    <meta name="twitter:image" content="/icon.svg">
+    
+    <!-- Theme Color -->
+    <meta name="theme-color" content="#6366f1">
+
     <link rel="stylesheet" href="style.css">
-    <link rel="icon" type="image/png" href="/icon.png">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- Icon Library (Lucide Icons) -->
-    <script src="https://unpkg.com/lucide-dev@latest"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <!-- Chart.js for Analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <div class="app-container">
-        <header class="navbar">
-            <div class="container">
-                <a href="#" class="logo">
-                    <i data-lucide="gem"></i>
-                    <h1>NutriTrack AI</h1>
-                </a>
-                <nav class="nav-links">
-                     <button id="edit-goals-btn" class="btn btn-secondary">
-                        <i data-lucide="target"></i>
-                        <span>Edit Goals</span>
-                    </button>
-                    <button class="dark-mode-toggle">
-                        <i data-lucide="moon"></i>
-                    </button>
-                </nav>
-            </div>
-        </header>
-
-        <main class="container">
-            <section id="summary" class="summary-section">
-                <h2>Today's Progress</h2>
-                <div class="progress-grid">
-                    <div class="progress-card">
-                        <svg class="progress-ring" viewBox="0 0 120 120">
-                            <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
-                            <circle id="calorie-ring" class="progress-ring-circle calories" cx="60" cy="60" r="54"/>
-                        </svg>
-                        <div class="progress-text">
-                            <span class="value" id="total-calories">0</span>
-                            <span class="label">/ <span id="calorie-goal-display">2000</span> kcal</span>
-                        </div>
+        <!-- Intro/Landing Page (shown when not signed in) -->
+        <div id="intro-page" class="intro-page">
+            <header class="intro-header">
+                <div class="container">
+                    <div class="intro-logo">
+                        <i data-lucide="gem"></i>
+                        <h1>NutriTrack AI</h1>
                     </div>
-                    <div class="progress-card">
-                        <svg class="progress-ring" viewBox="0 0 120 120">
-                            <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
-                            <circle id="protein-ring" class="progress-ring-circle protein" cx="60" cy="60" r="54"/>
-                        </svg>
-                        <div class="progress-text">
-                            <span class="value" id="total-protein">0</span>
-                            <span class="label">/ <span id="protein-goal-display">120</span>g Protein</span>
+                    <div class="intro-nav">
+                        <button id="intro-signin-btn" class="btn-text">Sign In</button>
+                    </div>
+                </div>
+            </header>
+
+            <main class="intro-main">
+                <div class="container">
+                    <div class="hero-section">
+                        <div class="hero-content">
+                            <h1 class="hero-title">Track Your Nutrition with AI-Powered Precision</h1>
+                            <p class="hero-subtitle">Simply snap a photo of your meal and let our AI identify and track your calories, protein, and macros automatically. Reach your health goals faster than ever.</p>
+                            
+                            <div class="hero-features">
+                                <div class="feature-item">
+                                    <i data-lucide="camera"></i>
+                                    <span>Photo Recognition</span>
+                                </div>
+                                <div class="feature-item">
+                                    <i data-lucide="bar-chart-3"></i>
+                                    <span>Smart Analytics</span>
+                                </div>
+                                <div class="feature-item">
+                                    <i data-lucide="target"></i>
+                                    <span>Goal Tracking</span>
+                                </div>
+                            </div>
+
+                            <div class="hero-actions">
+                                <button id="hero-signup-btn" class="btn btn-primary-large">
+                                    Get Started Free
+                                </button>
+                                <button id="hero-signin-btn" class="btn btn-secondary-large">
+                                    Sign In
+                                </button>
+                            </div>
+
+                            <p class="hero-note">No credit card required • Start tracking in seconds</p>
+                        </div>
+                        
+                        <div class="hero-image">
+                            <div class="app-preview">
+                                <div class="preview-screen">
+                                    <div class="preview-header">
+                                        <div class="preview-stats">
+                                            <div class="stat-circle">
+                                                <span>1,847</span>
+                                                <small>calories</small>
+                                            </div>
+                                            <div class="stat-circle">
+                                                <span>95g</span>
+                                                <small>protein</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="preview-meals">
+                                        <div class="meal-preview">
+                                            <i data-lucide="sunrise"></i>
+                                            <span>Breakfast - 420 kcal</span>
+                                        </div>
+                                        <div class="meal-preview">
+                                            <i data-lucide="sun"></i>
+                                            <span>Lunch - 685 kcal</span>
+                                        </div>
+                                        <div class="meal-preview">
+                                            <i data-lucide="sunset"></i>
+                                            <span>Dinner - 742 kcal</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </section>
+            </main>
+        </div>
 
-           <section id="meal-logging" class="meal-logging-section">
+        <!-- Main App (shown when signed in) -->
+        <div id="main-app" class="main-app hidden">
+            <!-- Sidebar Navigation -->
+            <aside class="sidebar">
+                <div class="sidebar-header">
+                    <div class="sidebar-logo">
+                        <i data-lucide="gem"></i>
+                        <span>NutriTrack AI</span>
+                    </div>
+                </div>
+                
+                <nav class="sidebar-nav">
+                    <button class="sidebar-item active" id="sidebar-dashboard">
+                        <i data-lucide="home"></i>
+                        <span>Dashboard</span>
+                    </button>
+                    <button class="sidebar-item" id="sidebar-analytics">
+                        <i data-lucide="bar-chart-3"></i>
+                        <span>Analytics</span>
+                    </button>
+                    <button class="sidebar-item" id="sidebar-history">
+                        <i data-lucide="calendar"></i>
+                        <span>History</span>
+                    </button>
+                    <button class="sidebar-item" id="sidebar-profile">
+                        <i data-lucide="user"></i>
+                        <span>Profile</span>
+                    </button>
+                    <button class="sidebar-item sidebar-signout" id="sidebar-signout">
+                        <i data-lucide="log-out"></i>
+                        <span>Sign Out</span>
+                    </button>
+                </nav>
+
+                <div class="sidebar-footer">
+                    <div class="user-info-sidebar">
+                        <div class="user-avatar-sidebar">
+                            <span id="user-initial-sidebar" class="user-initial-sidebar"></span>
+                        </div>
+                        <div class="user-details-sidebar">
+                            <div class="user-name-sidebar" id="user-name-sidebar">User</div>
+                            <div class="user-email-sidebar" id="user-email-sidebar"></div>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Main Content Area -->
+            <div class="main-content">
+                <header class="main-header">
+                    <div class="header-content">
+                        <h1 id="page-title">Dashboard</h1>
+                    </div>
+                </header>
+
+                <!-- Dashboard Content -->
+                <div class="content-area" id="dashboard-content" style="display: block;">
+                    <section id="summary" class="summary-section">
+                        <div class="section-header">
+                            <h2>Today's Progress</h2>
+                            <button class="btn btn-secondary edit-goals-btn" id="edit-goals-btn">
+                                <i data-lucide="target"></i>
+                                Edit Goals
+                            </button>
+                        </div>
+                        <div class="progress-grid">
+                            <div class="progress-card">
+                                <svg class="progress-ring" viewBox="0 0 120 120">
+                                    <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
+                                    <circle id="calorie-ring" class="progress-ring-circle calories" cx="60" cy="60" r="54"/>
+                                </svg>
+                                <div class="progress-text">
+                                    <span class="value" id="total-calories">0</span>
+                                    <span class="label">/ <span id="calorie-goal-display">2000</span> kcal</span>
+                                </div>
+                            </div>
+                            <div class="progress-card">
+                                <svg class="progress-ring" viewBox="0 0 120 120">
+                                    <circle class="progress-ring-bg" cx="60" cy="60" r="54" />
+                                    <circle id="protein-ring" class="progress-ring-circle protein" cx="60" cy="60" r="54"/>
+                                </svg>
+                                <div class="progress-text">
+                                    <span class="value" id="total-protein">0</span>
+                                    <span class="label">/ <span id="protein-goal-display">120</span>g Protein</span>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section id="meal-logging" class="meal-logging-section">
     <h2>Your Meals</h2>
     <div class="meal-accordion">
         <div class="meal-card" id="breakfast">
@@ -146,25 +303,430 @@
         </div>
     </div>
 </section>
-       
-       
-           
+                </div>
+
+            <!-- Analytics Content (hidden by default) -->
+            <div class="content-area " id="analytics-content" style="display: none;">
+                <section class="analytics-section">
+                    <h2>Your Progress Analytics</h2>
+                    
+                    <div class="analytics-overview">
+                        <div class="analytics-card">
+                            <h3>Weekly Summary</h3>
+                            <div class="analytics-stats">
+                                <div class="stat-item">
+                                    <span class="stat-value" id="avg-calories">0</span>
+                                    <span class="stat-label">Avg Calories/Day</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-value" id="avg-protein">0g</span>
+                                    <span class="stat-label">Avg Protein/Day</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-value" id="days-on-track">0</span>
+                                    <span class="stat-label">Days on Track</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="charts-grid">
+                        <div class="chart-container">
+                            <h3>Weekly Calorie Trend</h3>
+                            <canvas id="calorie-chart"></canvas>
+                        </div>
+                        <div class="chart-container">
+                            <h3>Protein Intake Progress</h3>
+                            <canvas id="protein-chart"></canvas>
+                        </div>
+                        <div class="chart-container">
+                            <h3>Macronutrient Breakdown</h3>
+                            <canvas id="macro-chart"></canvas>
+                        </div>
+                        <div class="chart-container">
+                            <h3>Goal Achievement Rate</h3>
+                            <canvas id="goals-chart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="analytics-actions">
+                        <button id="refresh-analytics-btn" class="btn btn-secondary">
+                            <i data-lucide="refresh-cw"></i>
+                            Refresh Data
+                        </button>
+                        <button id="export-data-btn" class="btn btn-secondary">
+                            <i data-lucide="download"></i>
+                            Export Data
+                        </button>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Profile Content -->
+            <div class="content-area" id="profile-content" style="display: none;">
+                <section class="profile-section">
+                    <h2>Profile Settings</h2>
+                    
+                    <div class="profile-grid">
+                        <!-- Profile Picture Card -->
+                        <div class="profile-card profile-picture-card">
+                            <h3>Profile Picture</h3>
+                            <div class="profile-picture-section">
+                                <div class="current-avatar">
+                                    <img id="profile-avatar" src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iNTAiIGN5PSI1MCIgcj0iNTAiIGZpbGw9IiNmMGYwZjAiLz48Y2lyY2xlIGN4PSI1MCIgY3k9IjM3IiByPSIxNSIgZmlsbD0iIzk5OTk5OSIvPjxwYXRoIGQ9Ik0yMCA3NWMwLTE2LjU2OSAxMy40MzEtMzAgMzAtMzBzMzAgMTMuNDMxIDMwIDMwIiBmaWxsPSIjOTk5OTk5Ii8+PC9zdmc+" alt="Profile Picture" class="avatar-image">
+                                    <div class="avatar-overlay">
+                                        <i data-lucide="camera" class="camera-icon"></i>
+                                        <span>Change Photo</span>
+                                    </div>
+                                </div>
+                                <div class="avatar-actions">
+                                    <input type="file" id="avatar-upload" accept="image/*" style="display: none;">
+                                    <button id="upload-avatar-btn" class="btn btn-secondary">
+                                        <i data-lucide="upload"></i> Upload Photo
+                                    </button>
+                                    <button id="remove-avatar-btn" class="btn btn-outline">
+                                        <i data-lucide="trash-2"></i> Remove
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Personal Information Card -->
+                        <div class="profile-card">
+                            <h3>Personal Information</h3>
+                            <form id="personal-info-form" class="profile-form">
+                                <div class="form-row">
+                                    <div class="input-group">
+                                        <label for="profile-name">Full Name</label>
+                                        <input type="text" id="profile-name" placeholder="Enter your full name">
+                                    </div>
+                                </div>
+                                
+                                <div class="form-row">
+                                    <div class="input-group">
+                                        <label for="profile-age">Age</label>
+                                        <input type="number" id="profile-age" min="13" max="120" placeholder="25">
+                                    </div>
+                                </div>
+                                
+                                <div class="form-row">
+                                    <div class="input-group">
+                                        <label for="profile-gender">Gender</label>
+                                        <select id="profile-gender">
+                                            <option value="">Select Gender</option>
+                                            <option value="male">Male</option>
+                                            <option value="female">Female</option>
+                                            <option value="other">Other</option>
+                                            <option value="prefer-not-to-say">Prefer not to say</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-row">
+                                    <div class="input-group">
+                                        <label for="profile-location">Location (Optional)</label>
+                                        <input type="text" id="profile-location" placeholder="City, Country">
+                                    </div>
+                                </div>
+                                
+                                <div class="form-row">
+                                    <div class="input-group">
+                                        <label for="profile-activity">Activity Level</label>
+                                        <select id="profile-activity">
+                                            <option value="">Select Activity Level</option>
+                                            <option value="sedentary">Sedentary (little to no exercise)</option>
+                                            <option value="light">Light (1-3 days/week)</option>
+                                            <option value="moderate">Moderate (3-5 days/week)</option>
+                                            <option value="active">Active (6-7 days/week)</option>
+                                            <option value="very-active">Very Active (2x/day, intense)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Physical Measurements Card -->
+                        <div class="profile-card">
+                            <h3>Physical Measurements</h3>
+                            <form id="measurements-form" class="profile-form">
+                                <div class="form-row">
+                                    <div class="input-group">
+                                        <label for="profile-height">Height</label>
+                                        <div class="measurement-input">
+                                            <input type="number" id="profile-height" step="0.1" placeholder="170">
+                                            <select id="height-unit">
+                                                <option value="cm">cm</option>
+                                                <option value="ft">ft</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-row">
+                                    <div class="input-group">
+                                        <label for="profile-weight">Current Weight</label>
+                                        <div class="measurement-input">
+                                            <input type="number" id="profile-weight" step="0.1" placeholder="70">
+                                            <select id="weight-unit">
+                                                <option value="kg">kg</option>
+                                                <option value="lbs">lbs</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-row">
+                                    <div class="input-group">
+                                        <label for="profile-target-weight">Target Weight</label>
+                                        <div class="measurement-input">
+                                            <input type="number" id="profile-target-weight" step="0.1" placeholder="65">
+                                            <select id="target-weight-unit">
+                                                <option value="kg">kg</option>
+                                                <option value="lbs">lbs</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="form-row">
+                                    <div class="input-group">
+                                        <label for="profile-goal">Primary Goal</label>
+                                        <select id="profile-goal">
+                                            <option value="">Select Goal</option>
+                                            <option value="lose-weight">Lose Weight</option>
+                                            <option value="maintain-weight">Maintain Weight</option>
+                                            <option value="gain-weight">Gain Weight</option>
+                                            <option value="build-muscle">Build Muscle</option>
+                                            <option value="improve-health">Improve Overall Health</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Health Metrics Card -->
+                        <div class="profile-card">
+                            <h3>Health Metrics</h3>
+                            <div class="health-metrics">
+                                <div class="metric-item">
+                                    <label>BMI</label>
+                                    <span id="calculated-bmi" class="metric-value">--</span>
+                                    <span id="bmi-category" class="metric-category">--</span>
+                                </div>
+                                <div class="metric-item">
+                                    <label>Daily Calorie Recommendation</label>
+                                    <span id="calculated-calories" class="metric-value">-- kcal</span>
+                                </div>
+                                <div class="metric-item">
+                                    <label>Protein Recommendation</label>
+                                    <span id="calculated-protein" class="metric-value">-- g</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Account Settings Card -->
+                        <div class="profile-card">
+                            <h3>Account Settings</h3>
+                            <div class="account-settings">
+                                <div class="setting-item">
+                                    <label>Email</label>
+                                    <span id="account-email" class="setting-value">--</span>
+                                </div>
+                                <div class="setting-item">
+                                    <label>Member Since</label>
+                                    <span id="member-since" class="setting-value">--</span>
+                                </div>
+                                <div class="setting-actions">
+                                    <button id="save-profile-btn" class="btn btn-primary">Save Changes</button>
+                                    <button id="reset-profile-btn" class="btn btn-secondary">Reset to Default</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- History Content (hidden by default) -->
+            <div class="content-area" id="history-content" style="display: none;">
+                <section class="history-section">
+                    <h2>Nutrition History</h2>
+                    
+                    <!-- Year Selector -->
+                    <div class="history-nav">
+                        <div class="year-selector">
+                            <button class="year-nav-btn" id="prev-year">
+                                <i data-lucide="chevron-left"></i>
+                            </button>
+                            <h3 id="current-year">2025</h3>
+                            <button class="year-nav-btn" id="next-year">
+                                <i data-lucide="chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Months Grid -->
+                    <div class="months-grid" id="months-grid">
+                        <div class="month-card" data-month="0">
+                            <h4>January</h4>
+                            <div class="month-stats">
+                                <span class="month-days" id="jan-days">0 days logged</span>
+                                <span class="month-avg" id="jan-avg">0 avg kcal</span>
+                            </div>
+                        </div>
+                        <div class="month-card" data-month="1">
+                            <h4>February</h4>
+                            <div class="month-stats">
+                                <span class="month-days" id="feb-days">0 days logged</span>
+                                <span class="month-avg" id="feb-avg">0 avg kcal</span>
+                            </div>
+                        </div>
+                        <div class="month-card" data-month="2">
+                            <h4>March</h4>
+                            <div class="month-stats">
+                                <span class="month-days" id="mar-days">0 days logged</span>
+                                <span class="month-avg" id="mar-avg">0 avg kcal</span>
+                            </div>
+                        </div>
+                        <div class="month-card" data-month="3">
+                            <h4>April</h4>
+                            <div class="month-stats">
+                                <span class="month-days" id="apr-days">0 days logged</span>
+                                <span class="month-avg" id="apr-avg">0 avg kcal</span>
+                            </div>
+                        </div>
+                        <div class="month-card" data-month="4">
+                            <h4>May</h4>
+                            <div class="month-stats">
+                                <span class="month-days" id="may-days">0 days logged</span>
+                                <span class="month-avg" id="may-avg">0 avg kcal</span>
+                            </div>
+                        </div>
+                        <div class="month-card" data-month="5">
+                            <h4>June</h4>
+                            <div class="month-stats">
+                                <span class="month-days" id="jun-days">0 days logged</span>
+                                <span class="month-avg" id="jun-avg">0 avg kcal</span>
+                            </div>
+                        </div>
+                        <div class="month-card" data-month="6">
+                            <h4>July</h4>
+                            <div class="month-stats">
+                                <span class="month-days" id="jul-days">0 days logged</span>
+                                <span class="month-avg" id="jul-avg">0 avg kcal</span>
+                            </div>
+                        </div>
+                        <div class="month-card" data-month="7">
+                            <h4>August</h4>
+                            <div class="month-stats">
+                                <span class="month-days" id="aug-days">0 days logged</span>
+                                <span class="month-avg" id="aug-avg">0 avg kcal</span>
+                            </div>
+                        </div>
+                        <div class="month-card" data-month="8">
+                            <h4>September</h4>
+                            <div class="month-stats">
+                                <span class="month-days" id="sep-days">0 days logged</span>
+                                <span class="month-avg" id="sep-avg">0 avg kcal</span>
+                            </div>
+                        </div>
+                        <div class="month-card" data-month="9">
+                            <h4>October</h4>
+                            <div class="month-stats">
+                                <span class="month-days" id="oct-days">0 days logged</span>
+                                <span class="month-avg" id="oct-avg">0 avg kcal</span>
+                            </div>
+                        </div>
+                        <div class="month-card" data-month="10">
+                            <h4>November</h4>
+                            <div class="month-stats">
+                                <span class="month-days" id="nov-days">0 days logged</span>
+                                <span class="month-avg" id="nov-avg">0 avg kcal</span>
+                            </div>
+                        </div>
+                        <div class="month-card" data-month="11">
+                            <h4>December</h4>
+                            <div class="month-stats">
+                                <span class="month-days" id="dec-days">0 days logged</span>
+                                <span class="month-avg" id="dec-avg">0 avg kcal</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Weeks Grid (hidden by default) -->
+                    <div class="weeks-grid" id="weeks-grid" style="display: none;">
+                        <div class="history-breadcrumb">
+                            <button class="breadcrumb-btn" id="back-to-months">
+                                <i data-lucide="arrow-left"></i>
+                                Back to Months
+                            </button>
+                            <span id="selected-month-year">January 2025</span>
+                        </div>
+                        <div class="weeks-container" id="weeks-container">
+                            <!-- Weeks will be populated dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Days Grid (hidden by default) -->
+                    <div class="days-grid" id="days-grid" style="display: none;">
+                        <div class="history-breadcrumb">
+                            <button class="breadcrumb-btn" id="back-to-weeks">
+                                <i data-lucide="arrow-left"></i>
+                                Back to Weeks
+                            </button>
+                            <span id="selected-week-range">Week 1, January 2025</span>
+                        </div>
+                        <div class="days-container" id="days-container">
+                            <!-- Days will be populated dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Day Detail View (hidden by default) -->
+                    <div class="day-detail" id="day-detail" style="display: none;">
+                        <div class="history-breadcrumb">
+                            <button class="breadcrumb-btn" id="back-to-days">
+                                <i data-lucide="arrow-left"></i>
+                                Back to Week
+                            </button>
+                            <span id="selected-day-date">Monday, September 8, 2025</span>
+                        </div>
+                        <div class="day-summary-card">
+                            <h3>Daily Summary</h3>
+                            <div class="day-macros">
+                                <div class="macro-item">
+                                    <span class="macro-value" id="day-calories">0</span>
+                                    <span class="macro-label">Calories</span>
+                                </div>
+                                <div class="macro-item">
+                                    <span class="macro-value" id="day-protein">0g</span>
+                                    <span class="macro-label">Protein</span>
+                                </div>
+                                <div class="macro-item">
+                                    <span class="macro-value" id="day-carbs">0g</span>
+                                    <span class="macro-label">Carbs</span>
+                                </div>
+                                <div class="macro-item">
+                                    <span class="macro-value" id="day-fat">0g</span>
+                                    <span class="macro-label">Fat</span>
+                                </div>
+                            </div>
+                            <div class="day-goals-progress">
+                                <div class="goal-progress">
+                                    <span>Calorie Goal:</span>
+                                    <span id="day-calorie-progress">0 / 2000 kcal</span>
+                                </div>
+                                <div class="goal-progress">
+                                    <span>Protein Goal:</span>
+                                    <span id="day-protein-progress">0 / 120g</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
         </div>
     </div>
-</section>
-        </main>
-
-        <footer class="footer">
-            <div class="container">
-                <div class="footer-links">
-                    <a href="#">Privacy Policy</a>
-                    <a href="#">Terms of Service</a>
-                    <a href="#">GitHub</a>
-                </div>
-                <p>&copy; 2025 NutriTrack AI. All rights reserved.</p>
-            </div>
-        </footer>
-    </div>
+    </main>
+</div>
 
     <!-- MODAL for Editing Goals -->
     <div id="goal-modal" class="modal-overlay hidden">
@@ -196,8 +758,125 @@
         </div>
     </div>
 
+    <!-- NEW: AUTH MODAL -->
+<div id="auth-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+        <button class="modal-close-btn" data-modal-id="auth-modal"><i data-lucide="x"></i></button>
+        <h3 id="auth-title">Sign In</h3>
 
+        <!-- Sign In Form -->
+        <form id="signin-form" class="auth-form">
+            <div class="input-group">
+                <label for="signin-email">Email</label>
+                <input type="email" id="signin-email" required>
+            </div>
+            <div class="input-group">
+                <label for="signin-password">Password</label>
+                <input type="password" id="signin-password" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Sign In</button>
+            <p class="auth-switch">Don't have an account? <a href="#" id="show-signup">Sign Up</a></p>
+        </form>
+
+        <!-- Sign Up Form (hidden by default) -->
+        <form id="signup-form" class="auth-form hidden">
+            <div class="input-group">
+                <label for="signup-email">Email</label>
+                <input type="email" id="signup-email" required>
+            </div>
+            <div class="input-group">
+                <label for="signup-password">Password (6+ characters)</label>
+                <input type="password" id="signup-password" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Sign Up</button>
+            <p class="auth-switch">Already have an account? <a href="#" id="show-signin">Sign In</a></p>
+        </form>
+
+        <p id="auth-error" class="error-message"></p>
+    </div>
+</div>
     <canvas id="canvas" style="display: none;"></canvas>
+    
+    <!-- Firebase SDK and Configuration -->
+    <script type="module">
+      // Import Firebase modules
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+      import { 
+        getAuth, 
+        signInWithEmailAndPassword, 
+        createUserWithEmailAndPassword, 
+        signOut, 
+        onAuthStateChanged 
+      } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+      import { 
+        getFirestore, 
+        doc, 
+        setDoc, 
+        getDoc, 
+        collection, 
+        query, 
+        where, 
+        orderBy, 
+        getDocs,
+        serverTimestamp 
+      } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+      import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js";
+
+      // Firebase Configuration - defined inline to avoid module import issues
+      const firebaseConfig = {
+        apiKey: "AIzaSyBXOSq-jG3Na5vevepIKnnSPadixLkE9hA",
+        authDomain: "nutritrack-ai-auth.firebaseapp.com",
+        projectId: "nutritrack-ai-auth",
+        storageBucket: "nutritrack-ai-auth.firebasestorage.app",
+        messagingSenderId: "914196028233",
+        appId: "1:914196028233:web:93f7f9532002a373519898",
+        measurementId: "G-XDTHCXTCKC"
+      };
+
+      // Initialize Firebase
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const db = getFirestore(app);
+      let analytics;
+      
+      try {
+        analytics = getAnalytics(app);
+        console.log('✅ Firebase Analytics initialized');
+      } catch (error) {
+        console.log('⚠️ Analytics not available:', error);
+      }
+
+      // Make Firebase services available globally for script.js
+      window.firebaseAuth = {
+        auth,
+        signInWithEmailAndPassword,
+        createUserWithEmailAndPassword,
+        signOut,
+        onAuthStateChanged,
+        initialized: true
+      };
+
+      window.firebaseDb = {
+        db,
+        doc,
+        setDoc,
+        getDoc,
+        collection,
+        query,
+        where,
+        orderBy,
+        getDocs,
+        serverTimestamp,
+        initialized: true
+      };
+
+      window.firebaseReady = true;
+      console.log('✅ Firebase initialized successfully');
+
+      // Dispatch event to notify that Firebase is ready
+      window.dispatchEvent(new CustomEvent('firebaseReady'));
+    </script>
+    
     <script src="script.js"></script>
     <script>
       lucide.createIcons(); // Initialize icons
