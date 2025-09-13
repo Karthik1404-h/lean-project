@@ -76,12 +76,20 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // --- Initialization ---
-    initializeFirebase();
-    loadDailyData();
-    updateDashboard();
-    renderAllMeals();
-    generateAnalytics(); // Generate analytics with real data
-    initializeEventListeners(); // Initialize all event listeners
+    async function initializeApp() {
+        initializeFirebase();
+        setupDayTransitionCheck(); // Set up automatic day checking
+        await loadDailyData();
+        updateDashboard();
+        renderAllMeals();
+        if (currentUser) {
+            await generateAnalytics(); // Generate analytics with real data
+        }
+        initializeEventListeners(); // Initialize all event listeners
+    }
+    
+    // Start the app
+    initializeApp();
 
     // --- Functions ---
     
@@ -284,6 +292,13 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('🎯 Setting up auth state listener');
         window.firebaseAuth.onAuthStateChanged(window.firebaseAuth.auth, async (user) => {
             console.log('🔄 Auth state changed:', user ? `signed in as ${user.email}` : 'signed out');
+            
+            // Clear any existing data when user changes
+            if (currentUser !== user) {
+                console.log('👤 User changed, clearing existing data');
+                resetToNewDay();
+            }
+            
             currentUser = user;
             updateAuthUI(user);
             
@@ -310,8 +325,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Update sidebar user info
                 updateSidebarUserInfo(user);
                 
-                // Load user data and update dashboard
-                await loadUserDataFromFirestore();
+                // Try to migrate legacy data first
+                await migrateLegacyData();
+                
+                // Load user-specific data from Firestore
+                await loadDailyData();
                 updateDashboard();
                 renderAllMeals();
                 
@@ -332,14 +350,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     console.log('🔄 Main app hidden');
                 }
                 
-                // Reset to default data
-                dailyData = {
-                    date: new Date().toLocaleDateString(),
-                    meals: { breakfast: [], lunch: [], dinner: [], snacks: [] },
-                    totals: { calories: 0, protein: 0, carbs: 0, fat: 0 },
-                    goals: { calories: 2000, protein: 120 }
-                };
-                loadDailyData();
+                // Reset to default data (no user-specific data)
+                resetToNewDay();
                 updateDashboard();
                 renderAllMeals();
             }
@@ -407,7 +419,9 @@ document.addEventListener('DOMContentLoaded', () => {
             case 'analytics':
                 if (analyticsContent) {
                     analyticsContent.style.display = 'block';
-                    generateAnalytics();
+                    if (currentUser) {
+                        generateAnalytics();
+                    }
                 }
                 if (sidebarAnalytics) sidebarAnalytics.classList.add('active');
                 if (pageTitle) pageTitle.textContent = 'Analytics';
@@ -472,11 +486,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Analytics Functions ---
-    function generateAnalytics() {
+    async function generateAnalytics() {
         console.log('🔄 Generating analytics from user data...');
         
-        const history = getNutritionHistory();
+        const history = await getNutritionHistory();
+        console.log('📈 Historical data loaded:', Object.keys(history).length, 'days');
+        console.log('📈 Historical data sample:', history);
+        console.log('📅 Today\'s dailyData:', dailyData);
+        
         const analyticsData = calculateAnalyticsFromHistory(history);
+        console.log('📊 Analytics calculated:', analyticsData);
         
         // Update analytics display
         const avgCaloriesEl = document.getElementById('avg-calories');
@@ -978,7 +997,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function saveProfileData() {
+    async function saveProfileData() {
         console.log('Saving profile data...');
         
         if (!currentUser) {
@@ -1003,8 +1022,12 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         
         try {
-            // Save to localStorage for now (you can enhance this to save to Firestore)
-            localStorage.setItem(`profileData_${currentUser.uid}`, JSON.stringify(profileData));
+            // Save to Firestore
+            const userProfileRef = window.firebaseDb.doc(window.firebaseDb.db, 'users', currentUser.uid);
+            await window.firebaseDb.setDoc(userProfileRef, {
+                profileData: profileData,
+                lastUpdated: window.firebaseDb.serverTimestamp()
+            }, { merge: true });
             
             // Show success message
             const saveBtn = document.getElementById('save-profile-btn');
@@ -1017,7 +1040,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 saveBtn.style.background = '';
             }, 2000);
             
-            console.log('✅ Profile data saved successfully');
+            console.log('✅ Profile data saved successfully to Firestore');
         } catch (error) {
             console.error('❌ Error saving profile data:', error);
             alert('Error saving profile data. Please try again.');
@@ -1123,7 +1146,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    function removeAvatar() {
+    async function removeAvatar() {
         const avatarImage = document.getElementById('profile-avatar');
         const defaultAvatar = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iNTAiIGN5PSI1MCIgcj0iNTAiIGZpbGw9IiNmMGYwZjAiLz48Y2lyY2xlIGN4PSI1MCIgY3k9IjM3IiByPSIxNSIgZmlsbD0iIzk5OTk5OSIvPjxwYXRoIGQ9Ik0yMCA3NWMwLTE2LjU2OSAxMy40MzEtMzAgMzAtMzBzMzAgMTMuNDMxIDMwIDMwIiBmaWxsPSIjOTk5OTk5Ii8+PC9zdmc+";
         
@@ -1134,46 +1157,71 @@ document.addEventListener('DOMContentLoaded', () => {
         // Remove from sidebar avatar
         removeSidebarAvatar();
         
-        // Remove from storage
+        // Remove from Firestore
         if (currentUser) {
-            localStorage.removeItem(`profilePicture_${currentUser.uid}`);
+            try {
+                const userProfileRef = window.firebaseDb.doc(window.firebaseDb.db, 'users', currentUser.uid);
+                await window.firebaseDb.setDoc(userProfileRef, {
+                    profilePicture: null,
+                    lastUpdated: window.firebaseDb.serverTimestamp()
+                }, { merge: true });
+                console.log('✅ Profile picture removed from Firestore');
+            } catch (error) {
+                console.error('❌ Error removing profile picture:', error);
+            }
         }
     }
     
-    function saveProfilePicture(imageData) {
+    async function saveProfilePicture(imageData) {
         if (currentUser) {
-            localStorage.setItem(`profilePicture_${currentUser.uid}`, imageData);
+            try {
+                const userProfileRef = window.firebaseDb.doc(window.firebaseDb.db, 'users', currentUser.uid);
+                await window.firebaseDb.setDoc(userProfileRef, {
+                    profilePicture: imageData,
+                    lastUpdated: window.firebaseDb.serverTimestamp()
+                }, { merge: true });
+                console.log('✅ Profile picture saved to Firestore');
+            } catch (error) {
+                console.error('❌ Error saving profile picture:', error);
+            }
         }
     }
     
-    function loadSavedProfileData() {
+    async function loadSavedProfileData() {
         if (!currentUser) return;
         
-        // Load profile picture
-        const savedAvatar = localStorage.getItem(`profilePicture_${currentUser.uid}`);
-        if (savedAvatar) {
-            updateProfilePicture(savedAvatar);
-        }
-        
-        // Load other profile data
-        const savedProfile = localStorage.getItem(`profileData_${currentUser.uid}`);
-        if (savedProfile) {
-            try {
-                const profileData = JSON.parse(savedProfile);
+        try {
+            const userProfileRef = window.firebaseDb.doc(window.firebaseDb.db, 'users', currentUser.uid);
+            const userProfile = await window.firebaseDb.getDoc(userProfileRef);
+            
+            if (userProfile.exists()) {
+                const userData = userProfile.data();
                 
-                // Fill in form fields
-                Object.keys(profileData).forEach(key => {
-                    const element = document.getElementById(key);
-                    if (element) {
-                        element.value = profileData[key];
-                    }
-                });
+                // Load profile picture
+                if (userData.profilePicture) {
+                    updateProfilePicture(userData.profilePicture);
+                }
                 
-                // Recalculate metrics after loading data
-                calculateHealthMetrics();
-            } catch (error) {
-                console.error('Error loading profile data:', error);
+                // Load other profile data
+                if (userData.profileData) {
+                    const profileData = userData.profileData;
+                    
+                    // Fill in form fields
+                    Object.keys(profileData).forEach(key => {
+                        const element = document.getElementById(key);
+                        if (element) {
+                            element.value = profileData[key];
+                        }
+                    });
+                    
+                    // Recalculate metrics after loading data
+                    calculateHealthMetrics();
+                }
+                
+                console.log('✅ Profile data loaded from Firestore');
             }
+        } catch (error) {
+            console.error('❌ Error loading profile data:', error);
         }
     }
 
@@ -1334,14 +1382,28 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            const userDocRef = window.firebaseDb.doc(window.firebaseDb.db, 'users', currentUser.uid);
-            await window.firebaseDb.setDoc(userDocRef, {
+            const today = new Date().toLocaleDateString();
+            
+            // Save daily data to a separate document for each day
+            const dailyDocRef = window.firebaseDb.doc(window.firebaseDb.db, 'users', currentUser.uid, 'dailyData', today);
+            await window.firebaseDb.setDoc(dailyDocRef, {
+                date: today,
+                meals: dailyData.meals,
+                totals: dailyData.totals,
+                goals: dailyData.goals,
+                lastUpdated: window.firebaseDb.serverTimestamp()
+            });
+            
+            // Also update the user's profile and preferences
+            const userProfileRef = window.firebaseDb.doc(window.firebaseDb.db, 'users', currentUser.uid);
+            await window.firebaseDb.setDoc(userProfileRef, {
                 email: currentUser.email,
-                dailyData: dailyData,
+                lastActiveDate: today,
+                defaultGoals: dailyData.goals,
                 lastUpdated: window.firebaseDb.serverTimestamp()
             }, { merge: true });
             
-            console.log('✅ User data saved to Firestore');
+            console.log('✅ User daily data saved to Firestore for date:', today);
         } catch (error) {
             console.error('❌ Error saving user data:', error);
         }
@@ -1354,105 +1416,295 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            const userDocRef = window.firebaseDb.doc(window.firebaseDb.db, 'users', currentUser.uid);
-            const userDoc = await window.firebaseDb.getDoc(userDocRef);
+            const today = new Date().toLocaleDateString();
             
-            if (userDoc.exists()) {
-                const userData = userDoc.data();
-                if (userData.dailyData) {
-                    dailyData = userData.dailyData;
-                    console.log('✅ User data loaded from Firestore');
-                } else {
-                    console.log('📝 No daily data found, using defaults');
+            // Load today's data
+            const dailyDocRef = window.firebaseDb.doc(window.firebaseDb.db, 'users', currentUser.uid, 'dailyData', today);
+            const dailyDoc = await window.firebaseDb.getDoc(dailyDocRef);
+            
+            // Load user profile for default goals
+            const userProfileRef = window.firebaseDb.doc(window.firebaseDb.db, 'users', currentUser.uid);
+            const userProfile = await window.firebaseDb.getDoc(userProfileRef);
+            
+            let defaultGoals = { calories: 2000, protein: 120 };
+            if (userProfile.exists()) {
+                const profileData = userProfile.data();
+                if (profileData.defaultGoals) {
+                    defaultGoals = profileData.defaultGoals;
                 }
+            }
+            
+            if (dailyDoc.exists()) {
+                const todayData = dailyDoc.data();
+                dailyData = {
+                    date: today,
+                    meals: todayData.meals || { breakfast: [], lunch: [], dinner: [], snacks: [] },
+                    totals: todayData.totals || { calories: 0, protein: 0, carbs: 0, fat: 0 },
+                    goals: todayData.goals || defaultGoals
+                };
+                console.log('✅ User daily data loaded from Firestore for date:', today);
             } else {
-                console.log('📝 No user document found, creating new one');
-                await saveUserDataToFirestore();
+                // No data for today, start fresh
+                dailyData = {
+                    date: today,
+                    meals: { breakfast: [], lunch: [], dinner: [], snacks: [] },
+                    totals: { calories: 0, protein: 0, carbs: 0, fat: 0 },
+                    goals: defaultGoals
+                };
+                console.log('📝 No data for today, starting fresh with default goals');
             }
         } catch (error) {
             console.error('❌ Error loading user data:', error);
+            // Fallback to default data
+            resetToNewDay();
+        }
+    }
+
+    async function loadHistoricalData(days = 30) {
+        if (!currentUser || !window.firebaseDb) {
+            console.log('Cannot load historical data - user not signed in or Firestore not available');
+            return {};
+        }
+
+        try {
+            // First, try to get data from the old localStorage format for migration
+            const legacyHistory = getLegacyHistoryData();
+            
+            // Get recent data from Firestore efficiently
+            const firestoreHistory = await getFirestoreHistoryData(days);
+            
+            // Merge legacy and new data, prioritizing Firestore data
+            const history = { ...legacyHistory, ...firestoreHistory };
+            
+            console.log('✅ Historical data loaded for', Object.keys(history).length, 'days (', Object.keys(firestoreHistory).length, 'from Firestore,', Object.keys(legacyHistory).length, 'from legacy)');
+            return history;
+        } catch (error) {
+            console.error('❌ Error loading historical data:', error);
+            return {};
+        }
+    }
+
+    function getLegacyHistoryData() {
+        // Try to recover data from the old localStorage format
+        if (!currentUser) return {};
+        
+        try {
+            const historyKey = `nutritionHistory_${currentUser.uid}`;
+            const savedHistory = localStorage.getItem(historyKey);
+            if (savedHistory) {
+                const parsed = JSON.parse(savedHistory);
+                console.log('🔄 Found legacy history data with', Object.keys(parsed).length, 'days');
+                return parsed;
+            }
+        } catch (error) {
+            console.log('No legacy history data found');
+        }
+        return {};
+    }
+
+    async function getFirestoreHistoryData(days = 7) {
+        // Get only recent data from Firestore for better performance
+        try {
+            const history = {};
+            const today = new Date();
+            
+            // Only load last 7 days from Firestore for performance
+            const promises = [];
+            for (let i = 0; i < Math.min(days, 7); i++) {
+                const date = new Date(today);
+                date.setDate(today.getDate() - i);
+                const dateStr = date.toLocaleDateString();
+                
+                const dailyDocRef = window.firebaseDb.doc(window.firebaseDb.db, 'users', currentUser.uid, 'dailyData', dateStr);
+                promises.push(
+                    window.firebaseDb.getDoc(dailyDocRef).then(doc => {
+                        if (doc.exists()) {
+                            history[dateStr] = doc.data();
+                        }
+                    })
+                );
+            }
+            
+            // Execute all queries in parallel for better performance
+            await Promise.all(promises);
+            
+            return history;
+        } catch (error) {
+            console.error('❌ Error loading Firestore history:', error);
+            return {};
+        }
+    }
+
+    // Data migration function to help recover lost data
+    async function migrateLegacyData() {
+        if (!currentUser || !window.firebaseDb) {
+            console.log('Cannot migrate - user not signed in or Firestore not available');
+            return;
+        }
+
+        try {
+            // Check if user has legacy data
+            const historyKey = `nutritionHistory_${currentUser.uid}`;
+            const savedHistory = localStorage.getItem(historyKey);
+            const savedDaily = localStorage.getItem('nutriTrackDaily');
+            
+            let migrationCount = 0;
+            
+            // Migrate historical data
+            if (savedHistory) {
+                const historyData = JSON.parse(savedHistory);
+                console.log('🔄 Migrating', Object.keys(historyData).length, 'days of historical data...');
+                
+                for (const [date, data] of Object.entries(historyData)) {
+                    try {
+                        const dailyDocRef = window.firebaseDb.doc(window.firebaseDb.db, 'users', currentUser.uid, 'dailyData', date);
+                        const existingDoc = await window.firebaseDb.getDoc(dailyDocRef);
+                        
+                        if (!existingDoc.exists()) {
+                            await window.firebaseDb.setDoc(dailyDocRef, {
+                                date: date,
+                                meals: data.meals || { breakfast: [], lunch: [], dinner: [], snacks: [] },
+                                totals: data.totals || { calories: 0, protein: 0, carbs: 0, fat: 0 },
+                                goals: data.goals || { calories: 2000, protein: 120 },
+                                lastUpdated: window.firebaseDb.serverTimestamp(),
+                                migrated: true
+                            });
+                            migrationCount++;
+                        }
+                    } catch (error) {
+                        console.error(`❌ Error migrating data for ${date}:`, error);
+                    }
+                }
+            }
+            
+            // Migrate today's data if it exists
+            if (savedDaily) {
+                const dailyDataParsed = JSON.parse(savedDaily);
+                const date = dailyDataParsed.date || new Date().toLocaleDateString();
+                
+                try {
+                    const dailyDocRef = window.firebaseDb.doc(window.firebaseDb.db, 'users', currentUser.uid, 'dailyData', date);
+                    const existingDoc = await window.firebaseDb.getDoc(dailyDocRef);
+                    
+                    if (!existingDoc.exists() && (dailyDataParsed.totals?.calories > 0 || Object.values(dailyDataParsed.meals || {}).some(meal => meal.length > 0))) {
+                        await window.firebaseDb.setDoc(dailyDocRef, {
+                            date: date,
+                            meals: dailyDataParsed.meals || { breakfast: [], lunch: [], dinner: [], snacks: [] },
+                            totals: dailyDataParsed.totals || { calories: 0, protein: 0, carbs: 0, fat: 0 },
+                            goals: dailyDataParsed.goals || { calories: 2000, protein: 120 },
+                            lastUpdated: window.firebaseDb.serverTimestamp(),
+                            migrated: true
+                        });
+                        migrationCount++;
+                        console.log('🔄 Migrated today\'s data for', date);
+                    }
+                } catch (error) {
+                    console.error('❌ Error migrating today\'s data:', error);
+                }
+            }
+            
+            if (migrationCount > 0) {
+                console.log('✅ Successfully migrated', migrationCount, 'days of data to Firestore');
+                
+                // Reload data after migration
+                await loadDailyData();
+                updateDashboard();
+                renderAllMeals();
+                
+                // Show user notification
+                alert(`✅ Recovered ${migrationCount} days of your nutrition data! Your data has been restored. Please refresh the page to see all your data.`);
+            } else {
+                console.log('ℹ️ No legacy data found to migrate');
+            }
+            
+        } catch (error) {
+            console.error('❌ Error during data migration:', error);
         }
     }
 
     // --- Core App Functions ---
-    function loadDailyData() {
-        const today = new Date().toLocaleDateString();
-        const saved = localStorage.getItem('nutriTrackDaily');
-        
-        if (saved) {
-            try {
-                const parsed = JSON.parse(saved);
-                if (parsed.date === today) {
-                    dailyData = parsed;
-                } else {
-                    // Save yesterday's data before resetting
-                    if (currentUser && parsed.date) {
-                        saveDailyDataToHistory(parsed);
-                    }
-                    resetToNewDay();
-                }
-            } catch (e) {
-                console.log('Error parsing saved data, using defaults');
-                resetToNewDay();
-            }
+    async function loadDailyData() {
+        if (currentUser) {
+            // User is logged in, load from Firestore
+            await loadUserDataFromFirestore();
         } else {
+            // No user logged in, use default data
             resetToNewDay();
         }
     }
 
     function saveDailyData() {
-        dailyData.date = new Date().toLocaleDateString();
-        localStorage.setItem('nutriTrackDaily', JSON.stringify(dailyData));
-        
         if (currentUser) {
+            // Only save to Firestore, no localStorage
             saveUserDataToFirestore();
-            saveDailyDataToHistory(dailyData);
+        } else {
+            console.log('⚠️ No user logged in, data will not be saved');
         }
     }
 
     // Save daily data to historical records for analytics
-    function saveDailyDataToHistory(dataToSave) {
-        if (!currentUser || !dataToSave.date) return;
-        
-        const historyKey = `nutritionHistory_${currentUser.uid}`;
-        let history = JSON.parse(localStorage.getItem(historyKey) || '{}');
-        
-        // Store data by date
-        history[dataToSave.date] = {
-            meals: dataToSave.meals,
-            totals: dataToSave.totals,
-            goals: dataToSave.goals,
-            timestamp: Date.now()
-        };
-        
-        // Keep only last 30 days to prevent excessive storage
-        const dates = Object.keys(history).sort((a, b) => new Date(b) - new Date(a));
-        if (dates.length > 30) {
-            dates.slice(30).forEach(date => delete history[date]);
-        }
-        
-        localStorage.setItem(historyKey, JSON.stringify(history));
-        console.log('📊 Saved nutrition data for', dataToSave.date);
+    async function saveDailyDataToHistory(dataToSave) {
+        // This function is now handled by saveUserDataToFirestore
+        // Each day's data is automatically stored separately
+        console.log('✅ Daily data will be saved to Firestore automatically');
     }
 
     // Get historical data for analytics
-    function getNutritionHistory(days = 7) {
-        if (!currentUser) return {};
+    async function getNutritionHistory(days = 30) {
+        if (!currentUser) {
+            console.log('⚠️ No user logged in, cannot get nutrition history');
+            return {};
+        }
         
-        const historyKey = `nutritionHistory_${currentUser.uid}`;
-        const history = JSON.parse(localStorage.getItem(historyKey) || '{}');
-        
-        return history;
+        return await loadHistoricalData(days);
     }
 
     function resetToNewDay() {
+        const today = new Date().toLocaleDateString();
         dailyData = {
-            date: new Date().toLocaleDateString(),
+            date: today,
             meals: { breakfast: [], lunch: [], dinner: [], snacks: [] },
             totals: { calories: 0, protein: 0, carbs: 0, fat: 0 },
             goals: dailyData.goals || { calories: 2000, protein: 120 }
         };
-        saveDailyData();
+        console.log('🔄 Reset to new day:', today);
+    }
+
+    // Check for day transition and automatically reset if needed
+    function checkDayTransition() {
+        const today = new Date().toLocaleDateString();
+        if (dailyData.date !== today) {
+            console.log('🌅 New day detected, resetting data from', dailyData.date, 'to', today);
+            
+            // Save the previous day's data if user is logged in
+            if (currentUser && dailyData.date) {
+                saveDailyData(); // This will save the previous day's data
+            }
+            
+            // Reset to new day
+            resetToNewDay();
+            
+            // Load today's data if user is logged in
+            if (currentUser) {
+                loadDailyData();
+            }
+            
+            updateDashboard();
+            renderAllMeals();
+        }
+    }
+
+    // Set up automatic day transition checking
+    function setupDayTransitionCheck() {
+        // Check every minute for day transition
+        setInterval(checkDayTransition, 60000);
+        
+        // Also check when page becomes visible (user returns to tab)
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                checkDayTransition();
+            }
+        });
     }
 
     function openMealEntry(mealType) {
@@ -1807,7 +2059,9 @@ document.addEventListener('DOMContentLoaded', () => {
         saveDailyData();
         renderAllMeals();
         updateDashboard();
-        generateAnalytics(); // Update analytics with new data
+        if (currentUser) {
+            generateAnalytics(); // Update analytics with new data
+        }
         initializeEventListeners(); // Re-initialize listeners after meal is added
     }
 
@@ -1817,7 +2071,9 @@ document.addEventListener('DOMContentLoaded', () => {
         saveDailyData();
         renderAllMeals();
         updateDashboard();
-        generateAnalytics(); // Update analytics with new data
+        if (currentUser) {
+            generateAnalytics(); // Update analytics with new data
+        }
         initializeEventListeners(); // Re-initialize listeners after meal is deleted
     }
 
@@ -1840,7 +2096,9 @@ document.addEventListener('DOMContentLoaded', () => {
         saveDailyData();
         renderAllMeals();
         updateDashboard();
-        generateAnalytics(); // Update analytics with new data
+        if (currentUser) {
+            generateAnalytics(); // Update analytics with new data
+        }
     }
 
     // Make functions globally available
@@ -2615,7 +2873,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let selectedWeek = null;
     let selectedDay = null;
 
-    function initializeHistory() {
+    async function initializeHistory() {
         console.log('🔄 Initializing history view...');
         
         // Set current year
@@ -2629,10 +2887,10 @@ document.addEventListener('DOMContentLoaded', () => {
         addHistoryEventListeners();
         
         // Load month data
-        loadMonthsData();
+        await loadMonthsData();
         
         // Update year navigation state
-        updateYearNavigationState();
+        await updateYearNavigationState();
     }
 
     function addHistoryEventListeners() {
@@ -2641,22 +2899,22 @@ document.addEventListener('DOMContentLoaded', () => {
         const nextYearBtn = document.getElementById('next-year');
         
         if (prevYearBtn) {
-            prevYearBtn.addEventListener('click', () => {
+            prevYearBtn.addEventListener('click', async () => {
                 if (selectedYear > 2025) { // Prevent going below 2025
                     selectedYear--;
                     document.getElementById('current-year').textContent = selectedYear;
-                    loadMonthsData();
-                    updateYearNavigationState();
+                    await loadMonthsData();
+                    await updateYearNavigationState();
                 }
             });
         }
         
         if (nextYearBtn) {
-            nextYearBtn.addEventListener('click', () => {
+            nextYearBtn.addEventListener('click', async () => {
                 selectedYear++;
                 document.getElementById('current-year').textContent = selectedYear;
-                loadMonthsData();
-                updateYearNavigationState();
+                await loadMonthsData();
+                await updateYearNavigationState();
             });
         }
 
@@ -2694,7 +2952,7 @@ document.addEventListener('DOMContentLoaded', () => {
         loadMonthsData();
     }
 
-    function showWeeksView(month) {
+    async function showWeeksView(month) {
         selectedMonth = month;
         const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
                           'July', 'August', 'September', 'October', 'November', 'December'];
@@ -2706,10 +2964,10 @@ document.addEventListener('DOMContentLoaded', () => {
         
         document.getElementById('selected-month-year').textContent = `${monthNames[month]} ${selectedYear}`;
         currentHistoryView = 'weeks';
-        loadWeeksData(month);
+        await loadWeeksData(month);
     }
 
-    function showDaysView(weekData) {
+    async function showDaysView(weekData) {
         selectedWeek = weekData;
         
         document.getElementById('months-grid').style.display = 'none';
@@ -2719,7 +2977,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         document.getElementById('selected-week-range').textContent = weekData.range;
         currentHistoryView = 'days';
-        loadDaysData(weekData);
+        await loadDaysData(weekData);
     }
 
     function showDayDetail(dayData) {
@@ -2735,8 +2993,13 @@ document.addEventListener('DOMContentLoaded', () => {
         loadDayDetail(dayData);
     }
 
-    function loadMonthsData() {
-        const history = getNutritionHistory();
+    async function loadMonthsData() {
+        if (!currentUser) {
+            console.log('⚠️ No user logged in, cannot load month data');
+            return;
+        }
+        
+        const history = await getNutritionHistory(30); // Load more data for history
         const monthNames = ['jan', 'feb', 'mar', 'apr', 'may', 'jun',
                           'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
         
@@ -2774,13 +3037,13 @@ document.addEventListener('DOMContentLoaded', () => {
         return { daysLogged, avgCalories };
     }
 
-    function loadWeeksData(month) {
+    async function loadWeeksData(month) {
         const weeksContainer = document.getElementById('weeks-container');
         if (!weeksContainer) return;
         
         weeksContainer.innerHTML = '';
         
-        const weeks = getWeeksInMonth(selectedYear, month);
+        const weeks = await getWeeksInMonth(selectedYear, month);
         
         weeks.forEach((week, index) => {
             const weekCard = document.createElement('div');
@@ -2799,7 +3062,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function getWeeksInMonth(year, month) {
+    async function getWeeksInMonth(year, month) {
         const weeks = [];
         const firstDay = new Date(year, month, 1);
         const lastDay = new Date(year, month + 1, 0);
@@ -2825,7 +3088,7 @@ document.addEventListener('DOMContentLoaded', () => {
             };
             
             // Calculate week stats
-            const weekStats = getWeekStats(week.startDate, week.endDate);
+            const weekStats = await getWeekStats(week.startDate, week.endDate);
             week.daysLogged = weekStats.daysLogged;
             week.avgCalories = weekStats.avgCalories;
             
@@ -2838,8 +3101,8 @@ document.addEventListener('DOMContentLoaded', () => {
         return weeks;
     }
 
-    function getWeekStats(startDate, endDate) {
-        const history = getNutritionHistory();
+    async function getWeekStats(startDate, endDate) {
+        const history = await getNutritionHistory();
         let daysLogged = 0;
         let totalCalories = 0;
         
@@ -2857,13 +3120,13 @@ document.addEventListener('DOMContentLoaded', () => {
         return { daysLogged, avgCalories };
     }
 
-    function loadDaysData(weekData) {
+    async function loadDaysData(weekData) {
         const daysContainer = document.getElementById('days-container');
         if (!daysContainer) return;
         
         daysContainer.innerHTML = '';
         
-        const history = getNutritionHistory();
+        const history = await getNutritionHistory();
         const currentDate = new Date(weekData.startDate);
         
         while (currentDate <= weekData.endDate) {
@@ -2927,7 +3190,7 @@ document.addEventListener('DOMContentLoaded', () => {
             `${data.totals.protein || 0} / ${proteinGoal}g`;
     }
 
-    function updateYearNavigationState() {
+    async function updateYearNavigationState() {
         const prevYearBtn = document.getElementById('prev-year');
         if (prevYearBtn) {
             if (selectedYear <= 2025) {
@@ -2941,5 +3204,54 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     }
+
+    // Test function to add sample data for debugging
+    async function addSampleData() {
+        if (!currentUser) {
+            console.log('❌ No user logged in, cannot add sample data');
+            return;
+        }
+
+        const today = new Date();
+        const sampleDates = [
+            { days: 0, calories: 1950, protein: 85 }, // Today
+            { days: 1, calories: 2100, protein: 90 }, // Yesterday
+            { days: 2, calories: 1800, protein: 75 }, // 2 days ago
+            { days: 3, calories: 2200, protein: 95 }, // 3 days ago
+        ];
+
+        for (const sample of sampleDates) {
+            const date = new Date(today);
+            date.setDate(date.getDate() - sample.days);
+            const dateStr = date.toLocaleDateString();
+
+            const sampleData = {
+                date: dateStr,
+                meals: {
+                    breakfast: [{ name: 'Sample Breakfast', calories: sample.calories * 0.3, protein: sample.protein * 0.3 }],
+                    lunch: [{ name: 'Sample Lunch', calories: sample.calories * 0.4, protein: sample.protein * 0.4 }],
+                    dinner: [{ name: 'Sample Dinner', calories: sample.calories * 0.3, protein: sample.protein * 0.3 }],
+                    snacks: []
+                },
+                totals: { calories: sample.calories, protein: sample.protein, carbs: 200, fat: 70 },
+                goals: { calories: 2000, protein: 120 },
+                lastUpdated: new Date()
+            };
+
+            try {
+                const dailyDocRef = window.firebaseDb.doc(window.firebaseDb.db, 'users', currentUser.uid, 'dailyData', dateStr);
+                await window.firebaseDb.setDoc(dailyDocRef, sampleData);
+                console.log(`✅ Added sample data for ${dateStr}`);
+            } catch (error) {
+                console.error(`❌ Error adding sample data for ${dateStr}:`, error);
+            }
+        }
+        
+        console.log('🎯 Sample data added! Refreshing analytics...');
+        await generateAnalytics();
+    }
+
+    // Make sample data function available globally for testing
+    window.addSampleData = addSampleData;
 });
 
