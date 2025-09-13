@@ -296,7 +296,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Clear any existing data when user changes
             if (currentUser !== user) {
                 console.log('👤 User changed, clearing existing data');
-                resetToNewDay();
+                clearAllUserData();
             }
             
             currentUser = user;
@@ -350,10 +350,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     console.log('🔄 Main app hidden');
                 }
                 
-                // Reset to default data (no user-specific data)
-                resetToNewDay();
-                updateDashboard();
-                renderAllMeals();
+                // Clear ALL user data when signed out
+                clearAllUserData();
             }
         });
     }
@@ -455,6 +453,8 @@ document.addEventListener('DOMContentLoaded', () => {
             window.firebaseAuth.signOut(window.firebaseAuth.auth)
                 .then(() => {
                     console.log('✅ User signed out successfully');
+                    // Clear all user data immediately
+                    clearAllUserData();
                 })
                 .catch((error) => {
                     console.error('❌ Error signing out:', error);
@@ -1668,6 +1668,102 @@ document.addEventListener('DOMContentLoaded', () => {
             goals: dailyData.goals || { calories: 2000, protein: 120 }
         };
         console.log('🔄 Reset to new day:', today);
+    }
+
+    function clearAllUserData() {
+        console.log('🧹 Clearing all user data...');
+        
+        // Reset daily data
+        resetToNewDay();
+        
+        // Clear any cached historical data
+        if (typeof window.cachedHistoryData !== 'undefined') {
+            delete window.cachedHistoryData;
+        }
+        
+        // Clear analytics display
+        const avgCaloriesEl = document.getElementById('avg-calories');
+        const avgProteinEl = document.getElementById('avg-protein');
+        const daysOnTrackEl = document.getElementById('days-on-track');
+        const currentStreakEl = document.getElementById('current-streak');
+        
+        if (avgCaloriesEl) avgCaloriesEl.textContent = '0';
+        if (avgProteinEl) avgProteinEl.textContent = '0g';
+        if (daysOnTrackEl) daysOnTrackEl.textContent = '0';
+        if (currentStreakEl) currentStreakEl.textContent = '0';
+        
+        // Clear profile form data
+        clearProfileFormData();
+        
+        // Clear charts if they exist
+        if (window.calorieChart) {
+            window.calorieChart.destroy();
+            window.calorieChart = null;
+        }
+        if (window.proteinChart) {
+            window.proteinChart.destroy();
+            window.proteinChart = null;
+        }
+        if (window.macroChart) {
+            window.macroChart.destroy();
+            window.macroChart = null;
+        }
+        
+        // Update UI
+        updateDashboard();
+        renderAllMeals();
+        
+        console.log('✅ All user data cleared');
+    }
+
+    function clearProfileFormData() {
+        console.log('🧹 Clearing profile form data...');
+        
+        // List of profile form field IDs
+        const profileFields = [
+            'profile-name', 'profile-age', 'profile-gender', 'profile-location',
+            'profile-activity', 'profile-height', 'profile-weight', 
+            'profile-target-weight', 'profile-goal', 'height-unit', 
+            'weight-unit', 'target-weight-unit'
+        ];
+        
+        // Clear all profile form fields
+        profileFields.forEach(fieldId => {
+            const element = document.getElementById(fieldId);
+            if (element) {
+                if (element.tagName === 'SELECT') {
+                    element.selectedIndex = 0;
+                } else {
+                    element.value = '';
+                }
+            }
+        });
+        
+        // Clear profile picture display
+        const profilePicElement = document.querySelector('.profile-picture img');
+        if (profilePicElement) {
+            profilePicElement.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMTIiIGN5PSI4IiByPSIzIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIi8+CjxwYXRoIGQ9Im0yMSAyMS0xLTFjLTItMi01LTItNy0ycy01IDAtNyAybC0xIDEiIHN0cm9rZT0iY3VycmVudENvbG9yIiBzdHJva2Utd2lkdGg9IjIiLz4KPC9zdmc+';
+        }
+        
+        // Clear file input
+        const avatarUpload = document.getElementById('avatar-upload');
+        if (avatarUpload) {
+            avatarUpload.value = '';
+        }
+        
+        // Clear profile avatar image
+        const profileAvatar = document.getElementById('profile-avatar');
+        if (profileAvatar) {
+            profileAvatar.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMTIiIGN5PSI4IiByPSIzIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIi8+CjxwYXRoIGQ9Im0yMSAyMS0xLTFjLTItMi01LTItNy0ycy01IDAtNyAybC0xIDEiIHN0cm9rZT0iY3VycmVudENvbG9yIiBzdHJva2Utd2lkdGg9IjIiLz4KPC9zdmc+';
+        }
+        
+        // Clear health metrics display
+        const healthMetricsContainer = document.getElementById('health-metrics');
+        if (healthMetricsContainer) {
+            healthMetricsContainer.innerHTML = '';
+        }
+        
+        console.log('✅ Profile form data cleared');
     }
 
     // Check for day transition and automatically reset if needed
@@ -3253,5 +3349,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Make sample data function available globally for testing
     window.addSampleData = addSampleData;
+
+    // Debug function to check current user and data
+    window.debugUserData = function() {
+        console.log('=== USER DATA DEBUG ===');
+        console.log('Current User:', currentUser ? {
+            uid: currentUser.uid,
+            email: currentUser.email,
+            creationTime: currentUser.metadata?.creationTime
+        } : 'No user logged in');
+        console.log('Daily Data:', dailyData);
+        console.log('Daily Data Date:', dailyData?.date);
+        console.log('Today Date:', new Date().toLocaleDateString());
+        
+        // Check profile form data
+        const profileFields = [
+            'profile-name', 'profile-age', 'profile-gender', 'profile-location',
+            'profile-activity', 'profile-height', 'profile-weight'
+        ];
+        const profileData = {};
+        profileFields.forEach(fieldId => {
+            const element = document.getElementById(fieldId);
+            if (element) {
+                profileData[fieldId] = element.value;
+            }
+        });
+        console.log('Profile Form Data:', profileData);
+        console.log('=======================');
+    };
 });
 
