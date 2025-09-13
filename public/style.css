@@ -3305,3 +3305,49 @@ input[type="file"] { display: none; }
         justify-content: center;
     }
 }
+/* --- Google Sign-In Button Styles --- */
+.google-signin-btn {
+    background-color: #ffffff;
+    color: #333;
+    border: 1px solid var(--border-color);
+    width: 100%;
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.google-signin-btn:hover {
+    background-color: #f7f7f7;
+    border-color: #ccc;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.google-icon {
+    width: 20px;
+    height: 20px;
+}
+
+.divider {
+    text-align: center;
+    color: var(--text-light);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    margin-bottom: 1rem;
+    position: relative;
+}
+
+.divider::before, .divider::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: 40%;
+    height: 1px;
+    background-color: var(--border-color);
+}
+
+.divider::before {
+    left: 0;
+}
+
+.divider::after {
+    right: 0;
+}

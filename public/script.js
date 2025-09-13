@@ -243,9 +243,38 @@ document.addEventListener('DOMContentLoaded', () => {
                 e.target.classList.add('hidden');
             }
         });
+
+        // Google Sign-In Button
+    const googleSignInBtn = document.getElementById('google-signin-btn');
+    if (googleSignInBtn) {
+        googleSignInBtn.addEventListener('click', handleGoogleSignIn);
     }
+}
 
     // --- Authentication Functions ---
+    async function handleGoogleSignIn() {
+        console.log('🚀 Attempting Google Sign-In...');
+        if (!window.firebaseAuth || !window.firebaseAuth.GoogleAuthProvider) {
+            console.error('Firebase Google Auth Provider not available.');
+            authError.textContent = 'Google Sign-In is not configured correctly.';
+            return;
+        }
+
+        const provider = new window.firebaseAuth.GoogleAuthProvider();
+
+        try {
+            const result = await window.firebaseAuth.signInWithPopup(window.firebaseAuth.auth, provider);
+            const user = result.user;
+            console.log('✅ Google Sign-In successful for:', user.displayName);
+            closeModal('auth-modal');
+        } catch (error) {
+            console.error('❌ Error during Google Sign-In:', error);
+            if (error.code !== 'auth/popup-closed-by-user') {
+                authError.textContent = 'Could not sign in with Google. Please try again.';
+            }
+        }
+    }
+
     function setupAuthStateListener() {
         if (!window.firebaseAuth) {
             console.error('❌ Firebase Auth not available');
