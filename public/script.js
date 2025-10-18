@@ -2990,12 +2990,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function addHistoryEventListeners() {
-        // Year navigation
+        // Remove existing listeners first to prevent duplicates
         const prevYearBtn = document.getElementById('prev-year');
         const nextYearBtn = document.getElementById('next-year');
         
+        // Clone nodes to remove all event listeners
         if (prevYearBtn) {
-            prevYearBtn.addEventListener('click', async () => {
+            const newPrevBtn = prevYearBtn.cloneNode(true);
+            prevYearBtn.parentNode.replaceChild(newPrevBtn, prevYearBtn);
+            
+            newPrevBtn.addEventListener('click', async () => {
                 if (selectedYear > 2025) { // Prevent going below 2025
                     selectedYear--;
                     document.getElementById('current-year').textContent = selectedYear;
@@ -3006,7 +3010,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         if (nextYearBtn) {
-            nextYearBtn.addEventListener('click', async () => {
+            const newNextBtn = nextYearBtn.cloneNode(true);
+            nextYearBtn.parentNode.replaceChild(newNextBtn, nextYearBtn);
+            
+            newNextBtn.addEventListener('click', async () => {
                 selectedYear++;
                 document.getElementById('current-year').textContent = selectedYear;
                 await loadMonthsData();
@@ -3014,15 +3021,8 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        // Month cards
-        const monthCards = document.querySelectorAll('.month-card');
-        monthCards.forEach(card => {
-            card.addEventListener('click', () => {
-                const month = parseInt(card.dataset.month);
-                showWeeksView(month);
-            });
-        });
-
+        // Month cards will be handled in showMonthsView when they're created
+        
         // Breadcrumb navigation
         const backToMonthsBtn = document.getElementById('back-to-months');
         const backToWeeksBtn = document.getElementById('back-to-weeks');
@@ -3109,6 +3109,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 avgElement.textContent = `${monthData.avgCalories} avg kcal`;
             }
         });
+        
+        // Add click events to month cards
+        const monthCards = document.querySelectorAll('.month-card');
+        monthCards.forEach(card => {
+            // Remove existing click listeners by cloning
+            const newCard = card.cloneNode(true);
+            card.parentNode.replaceChild(newCard, card);
+            
+            newCard.addEventListener('click', () => {
+                const month = parseInt(newCard.dataset.month);
+                showWeeksView(month);
+            });
+        });
     }
 
     function getMonthData(history, year, month) {
@@ -3162,23 +3175,21 @@ document.addEventListener('DOMContentLoaded', () => {
         const weeks = [];
         const firstDay = new Date(year, month, 1);
         const lastDay = new Date(year, month + 1, 0);
+        const totalDays = lastDay.getDate();
         
-        let currentWeekStart = new Date(firstDay);
+        // Simple approach: divide month into 7-day periods
+        let currentDay = 1;
         let weekNumber = 1;
         
-        while (currentWeekStart <= lastDay) {
-            const weekEnd = new Date(currentWeekStart);
-            weekEnd.setDate(currentWeekStart.getDate() + 6);
-            
-            if (weekEnd > lastDay) {
-                weekEnd.setTime(lastDay.getTime());
-            }
+        while (currentDay <= totalDays) {
+            const weekStart = new Date(year, month, currentDay);
+            const weekEnd = new Date(year, month, Math.min(currentDay + 6, totalDays));
             
             const week = {
                 weekNumber,
-                startDate: new Date(currentWeekStart),
-                endDate: new Date(weekEnd),
-                range: `${currentWeekStart.toLocaleDateString()} - ${weekEnd.toLocaleDateString()}`,
+                startDate: weekStart,
+                endDate: weekEnd,
+                range: `${weekStart.toLocaleDateString()} - ${weekEnd.toLocaleDateString()}`,
                 daysLogged: 0,
                 avgCalories: 0
             };
@@ -3190,8 +3201,11 @@ document.addEventListener('DOMContentLoaded', () => {
             
             weeks.push(week);
             
-            currentWeekStart.setDate(currentWeekStart.getDate() + 7);
+            currentDay += 7;
             weekNumber++;
+            
+            // Limit to maximum 5 weeks per month to prevent overflow
+            if (weekNumber > 5) break;
         }
         
         return weeks;

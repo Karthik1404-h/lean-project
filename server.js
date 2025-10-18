@@ -7,15 +7,74 @@ require('dotenv').config(); // To load environment variables from a .env file
 
 // --- Configuration ---
 const app = express();
-const port = 3000; // The port the server will run on
+const port = process.env.PORT || 3000; // The port the server will run on
 
 // --- Middleware ---
 app.use(express.json({ limit: '10mb' })); 
 app.use(express.static('public')); 
 
 // --- Gemini API Setup ---
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-latest' });
+// Configure for v1 API endpoint with base URL override
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY, {
+  baseUrl: 'https://generativelanguage.googleapis.com/v1'
+});
+// Use gemini-2.5-flash which is confirmed available with the current API key
+const MODEL_ID = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+console.log(`🤖 Using Gemini model: ${MODEL_ID}`);
+console.log(`🔑 API Key configured: ${Boolean(process.env.GEMINI_API_KEY)}`);
+console.log(`🔑 API Key (first 10 chars): ${process.env.GEMINI_API_KEY?.substring(0, 10)}...`);
+
+// Configure model with specific options
+const model = genAI.getGenerativeModel({ 
+  model: MODEL_ID,
+  generationConfig: {
+    temperature: 0.1,
+    topP: 0.8,
+    topK: 40,
+    maxOutputTokens: 2048,
+  }
+});
+
+// --- Healthcheck ---
+app.get('/health', (req, res) => {
+  const ok = Boolean(process.env.GEMINI_API_KEY) && Boolean(MODEL_ID);
+  res.status(ok ? 200 : 500).json({
+    status: ok ? 'ok' : 'error',
+    model: MODEL_ID,
+    hasApiKey: Boolean(process.env.GEMINI_API_KEY),
+    port
+  });
+});
+
+// --- List Available Models ---
+app.get('/api/list-models', async (req, res) => {
+  try {
+    if (!process.env.GEMINI_API_KEY) {
+      return res.status(401).json({ error: 'GEMINI_API_KEY not configured' });
+    }
+    
+    console.log('Fetching available models...');
+    const models = await genAI.listModels();
+    
+    const modelInfo = models.map(model => ({
+      name: model.name,
+      displayName: model.displayName,
+      supportedMethods: model.supportedGenerationMethods,
+      inputTokenLimit: model.inputTokenLimit,
+      outputTokenLimit: model.outputTokenLimit
+    }));
+    
+    console.log('Available models:', modelInfo.length);
+    res.json({ models: modelInfo, currentModel: MODEL_ID });
+    
+  } catch (error) {
+    console.error('Error listing models:', error);
+    res.status(500).json({ 
+      error: 'Failed to list models', 
+      details: error.message 
+    });
+  }
+});
 
 /**
  * Converts a base64 encoded image string to a GoogleGenerativeAI.Part object.
@@ -81,15 +140,20 @@ app.post('/api/analyze-image', async (req, res) => {
     `;
 
     const imagePart = base64ToGenerativePart(image);
-    const result = await model.generateContent([prompt, imagePart]);
+  const result = await model.generateContent([prompt, imagePart]);
     const text = result.response.text();
-    console.log("Initial Analysis Raw Response:", text);
+  console.log(`[Model: ${MODEL_ID}] Initial Analysis Raw Response:`, text);
 
     res.json(parseJsonResponse(text));
 
   } catch (error) {
-    console.error('Error in /analyze-image:', error);
-    res.status(500).json({ error: 'An error occurred during analysis.' });
+    console.error(`Error in /analyze-image [model=${MODEL_ID}]:`, error);
+    const status = error?.status === 401 ? 401 : error?.status === 429 ? 429 : 500;
+    const message =
+      status === 401 ? 'Invalid or missing API key.' :
+      status === 429 ? 'Rate limit exceeded. Please retry later.' :
+      'An error occurred during analysis.';
+    res.status(status).json({ error: message, details: error?.statusText || undefined });
   }
 });
 
@@ -114,16 +178,21 @@ app.post('/api/refine-image', async (req, res) => {
         `;
 
         const imagePart = base64ToGenerativePart(image);
-        const result = await model.generateContent([prompt, imagePart]);
+  const result = await model.generateContent([prompt, imagePart]);
         const text = result.response.text();
-        console.log("Refined Analysis Raw Response:", text);
+  console.log(`[Model: ${MODEL_ID}] Refined Analysis Raw Response:`, text);
         
         res.json(parseJsonResponse(text));
 
-    } catch (error) {
-        console.error('Error in /refine-image:', error);
-        res.status(500).json({ error: 'An error occurred during refinement.' });
-    }
+  } catch (error) {
+    console.error(`Error in /refine-image [model=${MODEL_ID}]:`, error);
+    const status = error?.status === 401 ? 401 : error?.status === 429 ? 429 : 500;
+    const message =
+      status === 401 ? 'Invalid or missing API key.' :
+      status === 429 ? 'Rate limit exceeded. Please retry later.' :
+      'An error occurred during refinement.';
+    res.status(status).json({ error: message, details: error?.statusText || undefined });
+  }
 });
 
 
