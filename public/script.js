@@ -68,6 +68,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentMealType = null;
     let currentUser = null;
     let currentImageBase64 = null;
+    let isAnalyzing = false; // Add flag to prevent multiple simultaneous API calls
+    let analysisSuccessful = false; // Add flag to track if food was successfully identified
     let dailyData = {
         date: new Date().toLocaleDateString(),
         meals: { breakfast: [], lunch: [], dinner: [], snacks: [] },
@@ -140,16 +142,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-
-        // Auth Event Listeners
-        if (signinForm) {
-            signinForm.addEventListener('submit', handleSignIn);
-        }
-
-        if (signupForm) {
-            signupForm.addEventListener('submit', handleSignUp);
-        }
-
+        // Auth link event listeners (these are always available)
         if (showSignupLink) {
             showSignupLink.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -377,7 +370,8 @@ document.addEventListener('DOMContentLoaded', () => {
             showSignInForm();
         }
         
-        authModal.classList.remove('hidden');
+        // Use openModal to ensure setupAuthFormListeners is called
+        openModal('auth-modal');
         console.log('✅ Auth modal opened');
     }
 
@@ -462,6 +456,57 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // Check what authentication providers are linked to current user
+    function checkAuthProviders() {
+        if (!currentUser) {
+            console.log('❌ No user signed in');
+            return;
+        }
+        
+        console.log('🔍 Checking auth providers for:', currentUser.email);
+        console.log('📋 Provider data:', currentUser.providerData);
+        
+        const providers = currentUser.providerData.map(provider => provider.providerId);
+        console.log('🔑 Linked providers:', providers);
+        
+        const hasEmail = providers.includes('password');
+        const hasGoogle = providers.includes('google.com');
+        
+        console.log('📧 Has email/password:', hasEmail);
+        console.log('🔍 Has Google:', hasGoogle);
+        
+        return { hasEmail, hasGoogle, providers };
+    }
+
+    // Add email/password authentication to existing Google account
+    async function linkEmailPassword(password) {
+        if (!currentUser) {
+            console.error('❌ No user signed in');
+            return false;
+        }
+        
+        try {
+            console.log('🔗 Linking email/password to account:', currentUser.email);
+            
+            const credential = window.firebaseAuth.EmailAuthProvider.credential(
+                currentUser.email,
+                password
+            );
+            
+            await window.firebaseAuth.linkWithCredential(currentUser, credential);
+            console.log('✅ Email/password linked successfully');
+            return true;
+        } catch (error) {
+            console.error('❌ Error linking email/password:', error);
+            console.error('Error code:', error.code);
+            
+            if (error.code === 'auth/email-already-in-use') {
+                console.log('ℹ️ This email is already associated with another account');
+            }
+            return false;
+        }
+    }
+
     // --- Modal Functions ---
     function openModal(modalId) {
         console.log('🔄 Opening modal:', modalId);
@@ -474,6 +519,47 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (calorieGoalInput) calorieGoalInput.value = dailyData.goals.calories;
                 if (proteinGoalInput) proteinGoalInput.value = dailyData.goals.protein;
             }
+            
+            // Set up auth form listeners when auth modal is opened
+            if (modalId === 'auth-modal') {
+                setupAuthFormListeners();
+            }
+        }
+    }
+
+    function setupAuthFormListeners() {
+        console.log('🔧 Setting up auth form listeners...');
+        
+        // Sign In form
+        const signinForm = document.getElementById('signin-form');
+        const signupForm = document.getElementById('signup-form');
+        
+        if (signinForm) {
+            console.log('✅ Found signin form, setting up listener');
+            // Remove any existing listeners
+            signinForm.removeEventListener('submit', handleSignIn);
+            signinForm.addEventListener('submit', handleSignIn);
+        } else {
+            console.error('❌ Signin form not found');
+        }
+        
+        if (signupForm) {
+            console.log('✅ Found signup form, setting up listener');
+            // Remove any existing listeners
+            signupForm.removeEventListener('submit', handleSignUp);
+            signupForm.addEventListener('submit', handleSignUp);
+        } else {
+            console.error('❌ Signup form not found');
+        }
+        
+        // Google Sign In button
+        const googleSignInBtn = document.getElementById('google-signin-btn');
+        if (googleSignInBtn) {
+            console.log('✅ Found Google signin button, setting up listener');
+            googleSignInBtn.removeEventListener('click', handleGoogleSignIn);
+            googleSignInBtn.addEventListener('click', handleGoogleSignIn);
+        } else {
+            console.error('❌ Google signin button not found');
         }
     }
 
@@ -1289,25 +1375,60 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Authentication Form Handlers ---
     async function handleSignIn(e) {
         e.preventDefault();
-        console.log('🔑 Attempting sign in...');
+        console.log('🔑 Email sign-in form submitted!');
         
-        const email = document.getElementById('signin-email').value;
-        const password = document.getElementById('signin-password').value;
+        // Debug form elements
+        const emailInput = document.getElementById('signin-email');
+        const passwordInput = document.getElementById('signin-password');
         
-        if (!email || !password) {
-            console.log('❌ Missing email or password');
-            authError.textContent = 'Please fill in all fields';
+        console.log('📧 Email input element found:', !!emailInput);
+        console.log('🔐 Password input element found:', !!passwordInput);
+        
+        if (!emailInput || !passwordInput) {
+            console.error('❌ Email or password input elements not found in DOM');
+            if (authError) authError.textContent = 'Form elements not found. Please refresh the page.';
             return;
         }
         
+        const email = emailInput.value.trim();
+        const password = passwordInput.value;
+        
+        console.log('📧 Email value:', email);
+        console.log('🔐 Password length:', password ? password.length : 0);
+        
+        if (!email || !password) {
+            console.log('❌ Missing email or password');
+            if (authError) authError.textContent = 'Please fill in all fields';
+            return;
+        }
+        
+        // Clear previous errors
+        if (authError) authError.textContent = '';
+        
         try {
-            console.log('🔄 Signing in user:', email);
+            console.log('🔄 Attempting to sign in user:', email);
+            console.log('🔄 Firebase auth object:', window.firebaseAuth);
+            console.log('🔄 Firebase auth.auth:', window.firebaseAuth?.auth);
+            console.log('🔄 signInWithEmailAndPassword function:', !!window.firebaseAuth?.signInWithEmailAndPassword);
+            
+            if (!window.firebaseAuth || !window.firebaseAuth.signInWithEmailAndPassword) {
+                throw new Error('Firebase authentication not properly initialized');
+            }
+            
+            console.log('🚀 Calling Firebase signInWithEmailAndPassword...');
             const userCredential = await window.firebaseAuth.signInWithEmailAndPassword(window.firebaseAuth.auth, email, password);
             console.log('✅ User signed in successfully:', userCredential.user.email);
+            console.log('✅ User UID:', userCredential.user.uid);
             closeModal('auth-modal');
         } catch (error) {
             console.error('❌ Error signing in:', error);
-            authError.textContent = getAuthErrorMessage(error.code);
+            console.error('❌ Error code:', error.code);
+            console.error('❌ Error message:', error.message);
+            console.error('❌ Full error object:', error);
+            
+            if (authError) {
+                authError.textContent = getAuthErrorMessage(error.code);
+            }
         }
     }
 
@@ -1320,24 +1441,39 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (!email || !password) {
             console.log('❌ Missing email or password');
-            authError.textContent = 'Please fill in all fields';
+            if (authError) authError.textContent = 'Please fill in all fields';
             return;
         }
         
         if (password.length < 6) {
             console.log('❌ Password too short');
-            authError.textContent = 'Password must be at least 6 characters';
+            if (authError) authError.textContent = 'Password must be at least 6 characters';
             return;
         }
         
+        // Clear previous errors
+        if (authError) authError.textContent = '';
+        
         try {
             console.log('🔄 Creating user account:', email);
+            console.log('🔄 Firebase auth available:', !!window.firebaseAuth);
+            console.log('🔄 createUserWithEmailAndPassword available:', !!window.firebaseAuth?.createUserWithEmailAndPassword);
+            
+            if (!window.firebaseAuth || !window.firebaseAuth.createUserWithEmailAndPassword) {
+                throw new Error('Firebase authentication not properly initialized');
+            }
+            
             const userCredential = await window.firebaseAuth.createUserWithEmailAndPassword(window.firebaseAuth.auth, email, password);
             console.log('✅ User signed up successfully:', userCredential.user.email);
             closeModal('auth-modal');
         } catch (error) {
             console.error('❌ Error signing up:', error);
-            authError.textContent = getAuthErrorMessage(error.code);
+            console.error('❌ Error code:', error.code);
+            console.error('❌ Error message:', error.message);
+            
+            if (authError) {
+                authError.textContent = getAuthErrorMessage(error.code);
+            }
         }
     }
 
@@ -1369,8 +1505,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 return 'Invalid email address';
             case 'auth/too-many-requests':
                 return 'Too many failed attempts. Please try again later';
+            case 'auth/operation-not-allowed':
+                return 'Email/password authentication is not enabled. Please contact support.';
+            case 'auth/user-disabled':
+                return 'This account has been disabled';
+            case 'auth/invalid-credential':
+                return 'Invalid email or password';
+            case 'auth/network-request-failed':
+                return 'Network error. Please check your connection';
             default:
-                return 'An error occurred. Please try again';
+                return `Authentication error (${errorCode}). Please try again or contact support.`;
         }
     }
 
@@ -1894,6 +2038,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const videoEl = mealEntryContent?.querySelector('.video-feed');
         console.log('Starting camera, video element found:', !!videoEl); // Debug log
         
+        // Reset analysis flags when starting camera
+        isAnalyzing = false;
+        analysisSuccessful = false;
+        
         try {
             activeStream = await navigator.mediaDevices.getUserMedia({ 
                 video: { facingMode: { ideal: 'environment' } }, 
@@ -1921,10 +2069,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     };
                 });
                 
-                console.log('Camera started successfully, setting up scanning interval'); // Debug log
+                console.log('Camera started successfully, setting up single capture timer'); // Debug log
                 
                 if (scanningInterval) clearInterval(scanningInterval);
-                scanningInterval = setInterval(() => captureAndAnalyze(mealType), 2500);
+                // Single capture after camera stabilizes (2 seconds)
+                scanningInterval = setTimeout(() => captureAndAnalyze(mealType), 2000);
             } else {
                 console.error('Video element or stream not available');
             }
@@ -1937,8 +2086,16 @@ document.addEventListener('DOMContentLoaded', () => {
     function stopCamera() {
         if (activeStream) activeStream.getTracks().forEach(track => track.stop());
         activeStream = null;
-        if (scanningInterval) clearInterval(scanningInterval);
+        if (scanningInterval) {
+            clearInterval(scanningInterval);
+            clearTimeout(scanningInterval); // Handle both interval and timeout
+        }
         scanningInterval = null;
+        
+        // Reset analysis flags when stopping camera
+        isAnalyzing = false;
+        analysisSuccessful = false;
+        
         const cameraBtn = mealEntryContent?.querySelector('.camera-btn');
         if (cameraBtn) {
             cameraBtn.innerHTML = '<i data-lucide="camera"></i> Open Camera';
@@ -1949,6 +2106,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function captureAndAnalyze(mealType) {
+        // Prevent multiple simultaneous API calls
+        if (isAnalyzing) {
+            console.log('Analysis already in progress, skipping...');
+            return;
+        }
+        
+        // Stop if we already successfully identified food
+        if (analysisSuccessful) {
+            console.log('Food already identified successfully, stopping camera...');
+            stopCamera();
+            return;
+        }
+        
         if (!activeStream) {
             console.log('No active stream for capture');
             return;
@@ -1971,10 +2141,37 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         console.log('Capturing frame for analysis...');
-        canvas.width = videoEl.videoWidth;
-        canvas.height = videoEl.videoHeight;
-        context.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
-        currentImageBase64 = canvas.toDataURL('image/jpeg');
+        
+        // Aggressive optimization for maximum speed
+        const maxWidth = 640;  // Further reduced from 800
+        const maxHeight = 480; // Further reduced from 600
+        const sourceWidth = videoEl.videoWidth;
+        const sourceHeight = videoEl.videoHeight;
+        
+        // Calculate optimal dimensions while maintaining aspect ratio
+        let canvasWidth = sourceWidth;
+        let canvasHeight = sourceHeight;
+        
+        if (sourceWidth > maxWidth || sourceHeight > maxHeight) {
+            const scale = Math.min(maxWidth / sourceWidth, maxHeight / sourceHeight);
+            canvasWidth = Math.round(sourceWidth * scale);
+            canvasHeight = Math.round(sourceHeight * scale);
+        }
+        
+        canvas.width = canvasWidth;
+        canvas.height = canvasHeight;
+        context.drawImage(videoEl, 0, 0, canvasWidth, canvasHeight);
+        
+        // Maximum compression for speed (60% quality)
+        currentImageBase64 = canvas.toDataURL('image/jpeg', 0.6);
+        console.log('Image captured and compressed. Size:', Math.round(currentImageBase64.length / 1024), 'KB');
+        
+        // Set analyzing flag and IMMEDIATELY stop camera
+        isAnalyzing = true;
+        console.log('📸 Image captured, closing camera for analysis...');
+        stopCamera();
+        
+        // Start analysis
         analyzeImage(currentImageBase64, mealType);
     }
     
@@ -2001,22 +2198,49 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('API result:', apiResult);
             
             if (Array.isArray(apiResult) && apiResult.length > 0) {
-                stopCamera();
+                console.log('✅ Food successfully identified, displaying results');
+                analysisSuccessful = true; // Mark as successful
                 displayMultiResults(apiResult, mealType);
             } else if (apiResult.error) {
+                console.log('⚠️ API returned error:', apiResult.error);
                 if (resultDisplay) {
-                    resultDisplay.innerHTML = `<p style="color: red;">${apiResult.error}</p>`;
+                    resultDisplay.innerHTML = `
+                        <p style="color: red;">${apiResult.error}</p>
+                        <button class="btn btn-primary" onclick="document.querySelector('.camera-btn').click()" style="margin-top: 10px;">
+                            <i data-lucide="camera"></i> Try Again
+                        </button>
+                    `;
+                    // Re-initialize Lucide icons for the new button
+                    if (window.lucide?.createIcons) lucide.createIcons();
                 }
             } else {
+                console.log('ℹ️ No food detected, offering retry option...');
                 if (resultDisplay) {
-                    resultDisplay.innerHTML = `<p>No food detected. Try another image or adjust the camera angle.</p>`;
+                    resultDisplay.innerHTML = `
+                        <p>No food detected. Try another image or adjust the camera angle.</p>
+                        <button class="btn btn-primary" onclick="document.querySelector('.camera-btn').click()" style="margin-top: 10px;">
+                            <i data-lucide="camera"></i> Try Again
+                        </button>
+                    `;
+                    // Re-initialize Lucide icons for the new button
+                    if (window.lucide?.createIcons) lucide.createIcons();
                 }
             }
         } catch (err) {
-            console.error('Error analyzing image:', err);
+            console.error('❌ Error analyzing image:', err);
             if (resultDisplay) {
-                resultDisplay.innerHTML = `<p style="color: red;">An error occurred: ${err.message}. Please try again.</p>`;
+                resultDisplay.innerHTML = `
+                    <p style="color: red;">An error occurred: ${err.message}</p>
+                    <button class="btn btn-primary" onclick="document.querySelector('.camera-btn').click()" style="margin-top: 10px;">
+                        <i data-lucide="camera"></i> Try Again
+                    </button>
+                `;
+                // Re-initialize Lucide icons for the new button
+                if (window.lucide?.createIcons) lucide.createIcons();
             }
+        } finally {
+            // Always reset the analyzing flag
+            isAnalyzing = false;
         }
     }
     
@@ -3391,5 +3615,9 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('Profile Form Data:', profileData);
         console.log('=======================');
     };
+    
+    // Make debugging functions available globally for testing
+    window.checkAuthProviders = checkAuthProviders;
+    window.linkEmailPassword = linkEmailPassword;
 });
 

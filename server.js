@@ -14,24 +14,22 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.static('public')); 
 
 // --- Gemini API Setup ---
-// Configure for v1 API endpoint with base URL override
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY, {
-  baseUrl: 'https://generativelanguage.googleapis.com/v1'
-});
-// Use gemini-2.5-flash which is confirmed available with the current API key
-const MODEL_ID = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+// Configure for v1 API endpoint - use correct initialization for SDK v0.24.1+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+// Use gemini-2.5-flash which is confirmed working with our API key
+const MODEL_ID = 'gemini-2.5-flash'; // Hardcoded to ensure it uses the right model
 console.log(`🤖 Using Gemini model: ${MODEL_ID}`);
 console.log(`🔑 API Key configured: ${Boolean(process.env.GEMINI_API_KEY)}`);
 console.log(`🔑 API Key (first 10 chars): ${process.env.GEMINI_API_KEY?.substring(0, 10)}...`);
 
-// Configure model with specific options
+// Configure model with optimized settings for gemini-2.5-flash
 const model = genAI.getGenerativeModel({ 
   model: MODEL_ID,
   generationConfig: {
-    temperature: 0.1,
-    topP: 0.8,
-    topK: 40,
-    maxOutputTokens: 2048,
+    temperature: 0.1,      // Slightly higher for better quality
+    topP: 0.8,            // Balanced for speed and quality
+    topK: 16,             // Moderate for good results
+    maxOutputTokens: 1024, // Sufficient for nutrition data
   }
 });
 
@@ -96,25 +94,54 @@ function base64ToGenerativePart(base64Image) {
  * A robust function to parse JSON from the model's text response.
  */
 function parseJsonResponse(text) {
-    const firstBracket = text.indexOf('[');
-    const lastBracket = text.lastIndexOf(']');
-    const firstBrace = text.indexOf('{');
-    const lastBrace = text.lastIndexOf('}');
+    // Remove any markdown code blocks
+    let cleanText = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    
+    const firstBracket = cleanText.indexOf('[');
+    const lastBracket = cleanText.lastIndexOf(']');
+    const firstBrace = cleanText.indexOf('{');
+    const lastBrace = cleanText.lastIndexOf('}');
 
     let jsonString;
 
     if (firstBracket !== -1 && lastBracket !== -1) {
-        jsonString = text.substring(firstBracket, lastBracket + 1);
+        jsonString = cleanText.substring(firstBracket, lastBracket + 1);
     } else if (firstBrace !== -1 && lastBrace !== -1) {
-        jsonString = text.substring(firstBrace, lastBrace + 1);
+        jsonString = cleanText.substring(firstBrace, lastBrace + 1);
     } else {
-        throw new Error("No valid JSON found in response");
+        // Try to parse the entire cleaned text
+        try {
+            return JSON.parse(cleanText);
+        } catch (e) {
+            throw new Error("No valid JSON found in response");
+        }
     }
     return JSON.parse(jsonString);
 }
 
 
 // --- API Endpoints ---
+
+// Helper function to retry API calls with exponential backoff
+async function retryWithBackoff(apiCall, maxRetries = 3, baseDelay = 1000) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await apiCall();
+    } catch (error) {
+      console.log(`Attempt ${attempt} failed:`, error.status, error.statusText);
+      
+      // If it's the last attempt or not a retryable error, throw
+      if (attempt === maxRetries || (error.status !== 503 && error.status !== 429)) {
+        throw error;
+      }
+      
+      // Wait with exponential backoff
+      const delay = baseDelay * Math.pow(2, attempt - 1);
+      console.log(`Retrying in ${delay}ms...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+}
 
 // Endpoint for initial image analysis
 app.post('/api/analyze-image', async (req, res) => {
@@ -124,34 +151,35 @@ app.post('/api/analyze-image', async (req, res) => {
       return res.status(400).json({ error: 'No image provided.' });
     }
 
-    const prompt = `
-      You are an expert nutritionist. Analyze the image of the meal.
-      - First, determine if the image contains a composite dish (like 'Egg Fried Rice') or separate, distinct items (like 'an egg, a bowl of rice').
-      - If it is a composite dish, identify it as a SINGLE item.
-      - If they are separate items, identify ALL distinct food items.
-      - For EACH item, you MUST provide an estimate for all four nutritional values: calories, proteinGrams, carbsGrams, and fatGrams. Also, provide a default unit ('g', 'ml', or 'pcs').
-      - If the item is countable (like a dosa or an egg), you MUST also provide a "gramsPerPiece" field with the estimated weight of a single piece.
-      - If a value is negligible but not zero, estimate it as a small number (e.g., 0.5). Do not omit any fields.
-      - Respond ONLY with a single, minified JSON array.
-      - The format for each object MUST be:
-        {"foodName": "...", "portionGrams": ..., "unit": "...", "gramsPerPiece": ..., "nutrients": {"calories": ..., "proteinGrams": ..., "carbsGrams": ..., "fatGrams": ...}}
-      - If the image does not contain any identifiable food, respond with:
-        {"error": "Could not identify any food items in the image."}
-    `;
+    const prompt = `Analyze this food image and return nutrition data as JSON:
+[{"foodName":"FOOD_NAME","portionGrams":GRAMS,"unit":"g","nutrients":{"calories":NUM,"proteinGrams":NUM,"carbsGrams":NUM,"fatGrams":NUM}}]
+Return only the JSON array, no other text.`;
 
     const imagePart = base64ToGenerativePart(image);
-  const result = await model.generateContent([prompt, imagePart]);
+    
+    // Add timing for performance monitoring
+    const startTime = Date.now();
+    console.log('🚀 Starting API request to Gemini...');
+    
+    // Direct API call for maximum speed (no retry delay)
+    const result = await model.generateContent([prompt, imagePart]);
+    
+    const endTime = Date.now();
+    const duration = endTime - startTime;
+    console.log(`⏱️ API request completed in ${duration}ms`);
+    
     const text = result.response.text();
-  console.log(`[Model: ${MODEL_ID}] Initial Analysis Raw Response:`, text);
+    console.log(`[Model: ${MODEL_ID}] Initial Analysis Raw Response:`, text);
 
     res.json(parseJsonResponse(text));
 
   } catch (error) {
     console.error(`Error in /analyze-image [model=${MODEL_ID}]:`, error);
-    const status = error?.status === 401 ? 401 : error?.status === 429 ? 429 : 500;
+    const status = error?.status === 401 ? 401 : error?.status === 429 ? 429 : error?.status === 503 ? 503 : 500;
     const message =
       status === 401 ? 'Invalid or missing API key.' :
-      status === 429 ? 'Rate limit exceeded. Please retry later.' :
+      status === 429 ? 'Rate limit exceeded. Please try again later.' :
+      status === 503 ? 'AI service is temporarily overloaded. Please try again in a moment.' :
       'An error occurred during analysis.';
     res.status(status).json({ error: message, details: error?.statusText || undefined });
   }
@@ -178,21 +206,27 @@ app.post('/api/refine-image', async (req, res) => {
         `;
 
         const imagePart = base64ToGenerativePart(image);
-  const result = await model.generateContent([prompt, imagePart]);
+        
+        // Use retry mechanism for the API call
+        const result = await retryWithBackoff(async () => {
+          return await model.generateContent([prompt, imagePart]);
+        });
+        
         const text = result.response.text();
-  console.log(`[Model: ${MODEL_ID}] Refined Analysis Raw Response:`, text);
+        console.log(`[Model: ${MODEL_ID}] Refined Analysis Raw Response:`, text);
         
         res.json(parseJsonResponse(text));
 
-  } catch (error) {
-    console.error(`Error in /refine-image [model=${MODEL_ID}]:`, error);
-    const status = error?.status === 401 ? 401 : error?.status === 429 ? 429 : 500;
-    const message =
-      status === 401 ? 'Invalid or missing API key.' :
-      status === 429 ? 'Rate limit exceeded. Please retry later.' :
-      'An error occurred during refinement.';
-    res.status(status).json({ error: message, details: error?.statusText || undefined });
-  }
+    } catch (error) {
+        console.error(`Error in /refine-image [model=${MODEL_ID}]:`, error);
+        const status = error?.status === 401 ? 401 : error?.status === 429 ? 429 : error?.status === 503 ? 503 : 500;
+        const message =
+          status === 401 ? 'Invalid or missing API key.' :
+          status === 429 ? 'Rate limit exceeded. Please try again later.' :
+          status === 503 ? 'AI service is temporarily overloaded. Please try again in a moment.' :
+          'An error occurred during refinement.';
+        res.status(status).json({ error: message, details: error?.statusText || undefined });
+    }
 });
 
 

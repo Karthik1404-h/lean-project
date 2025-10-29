@@ -815,7 +815,17 @@
     <script type="module">
       // Import Firebase modules
       import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-      import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+            import { 
+        getAuth, 
+        signInWithEmailAndPassword, 
+        createUserWithEmailAndPassword, 
+        signOut, 
+        onAuthStateChanged, 
+        GoogleAuthProvider, 
+        signInWithPopup,
+        EmailAuthProvider,
+        linkWithCredential
+      } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
       import { 
         getFirestore, 
         doc, 
@@ -863,7 +873,9 @@
     signOut,
     onAuthStateChanged,
     GoogleAuthProvider, 
-    signInWithPopup,      
+    signInWithPopup,
+    EmailAuthProvider,
+    linkWithCredential,
     initialized: true
     };
 
