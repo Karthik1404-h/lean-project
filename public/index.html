@@ -228,12 +228,10 @@
                                 <div class="progress-text">
                                     <span class="value" id="total-protein">0</span>
                                     <span class="label">/ <span id="protein-goal-display">120</span>g Protein</span>
-                                </div>
-                            </div>
                         </div>
-                    </section>
-
-                    <section id="meal-logging" class="meal-logging-section">
+                    </div>
+                </div>
+            </section>                    <section id="meal-logging" class="meal-logging-section">
     <h2>Your Meals</h2>
     <div class="meal-accordion">
         <div class="meal-card" id="breakfast">
@@ -696,108 +694,129 @@
             <div class="content-area" id="body-metrics-content" style="display: none;">
                 <section class="body-metrics-section">
                     <div class="section-header">
-                        <h2>Body Metrics & Measurements</h2>
-                        <button class="btn btn-primary" id="add-measurement-btn">
-                            <i data-lucide="plus"></i>
-                            Add New Entry
-                        </button>
+                        <h2>Body Metrics</h2>
                     </div>
                     
-                    <div class="metrics-grid">
-                        <!-- Current Stats Card -->
-                        <div class="metric-card current-stats">
-                            <h3>Current Statistics</h3>
-                            <div class="stats-display">
-                                <div class="stat-item">
-                                    <div class="stat-value" id="current-weight">--</div>
-                                    <div class="stat-label">Weight (kg)</div>
-                                    <div class="stat-date" id="weight-date">Last updated: --</div>
+                    <!-- Current Stats Card - Clean Design -->
+                    <div class="current-stats-container">
+                        <div class="stats-grid">
+                            <div class="stat-card weight-card">
+                                <div class="stat-header">
+                                    <h3>Weight</h3>
+                                    <button class="edit-btn" id="edit-weight-btn">
+                                        <i data-lucide="edit-2"></i>
+                                    </button>
                                 </div>
-                                <div class="stat-item">
-                                    <div class="stat-value" id="current-height">--</div>
-                                    <div class="stat-label">Height (cm)</div>
+                                <div class="stat-display">
+                                    <div class="stat-value" id="current-weight">70.0</div>
+                                    <div class="stat-unit">kg</div>
                                 </div>
-                                <div class="stat-item">
-                                    <div class="stat-value" id="current-bmi">--</div>
-                                    <div class="stat-label">BMI</div>
-                                    <div class="stat-category" id="bmi-category">--</div>
-                                </div>
-                                <div class="stat-item">
-                                    <div class="stat-value" id="current-body-fat">--</div>
-                                    <div class="stat-label">Body Fat %</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Progress Chart Card -->
-                        <div class="metric-card progress-chart">
-                            <h3>Weight Progress</h3>
-                            <canvas id="weight-progress-chart"></canvas>
-                            <div class="progress-summary">
-                                <div class="progress-item">
-                                    <span class="progress-label">Change (30d)</span>
-                                    <span class="progress-value" id="weight-change-30d">--</span>
-                                </div>
-                                <div class="progress-item">
-                                    <span class="progress-label">Change (90d)</span>
-                                    <span class="progress-value" id="weight-change-90d">--</span>
+                                <div class="stat-date" id="weight-date">Last updated: Today</div>
+                                <div class="edit-form hidden" id="weight-edit-form">
+                                    <input type="number" id="weight-input" step="0.1" placeholder="70.0">
+                                    <div class="edit-actions">
+                                        <button class="save-btn" id="save-weight-btn">Save</button>
+                                        <button class="cancel-btn" id="cancel-weight-btn">Cancel</button>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <!-- Body Measurements Card -->
-                        <div class="metric-card body-measurements">
-                            <h3>Body Measurements</h3>
-                            <div class="measurements-grid">
-                                <div class="measurement-item">
-                                    <label>Chest</label>
-                                    <span id="measurement-chest">-- cm</span>
+                            <div class="stat-card height-card">
+                                <div class="stat-header">
+                                    <h3>Height</h3>
+                                    <button class="edit-btn" id="edit-height-btn">
+                                        <i data-lucide="edit-2"></i>
+                                    </button>
                                 </div>
-                                <div class="measurement-item">
-                                    <label>Waist</label>
-                                    <span id="measurement-waist">-- cm</span>
+                                <div class="stat-display">
+                                    <div class="stat-value" id="current-height">175</div>
+                                    <div class="stat-unit">cm</div>
                                 </div>
-                                <div class="measurement-item">
-                                    <label>Hips</label>
-                                    <span id="measurement-hips">-- cm</span>
-                                </div>
-                                <div class="measurement-item">
-                                    <label>Arms</label>
-                                    <span id="measurement-arms">-- cm</span>
-                                </div>
-                                <div class="measurement-item">
-                                    <label>Thighs</label>
-                                    <span id="measurement-thighs">-- cm</span>
-                                </div>
-                                <div class="measurement-item">
-                                    <label>Neck</label>
-                                    <span id="measurement-neck">-- cm</span>
+                                <div class="edit-form hidden" id="height-edit-form">
+                                    <input type="number" id="height-input" step="1" placeholder="175">
+                                    <div class="edit-actions">
+                                        <button class="save-btn" id="save-height-btn">Save</button>
+                                        <button class="cancel-btn" id="cancel-height-btn">Cancel</button>
+                                    </div>
                                 </div>
                             </div>
+
+                            <div class="stat-card bodyfat-card">
+                                <div class="stat-header">
+                                    <h3>Body Fat</h3>
+                                    <button class="edit-btn" id="edit-bodyfat-btn">
+                                        <i data-lucide="edit-2"></i>
+                                    </button>
+                                </div>
+                                <div class="stat-display">
+                                    <div class="stat-value" id="current-body-fat">18.5</div>
+                                    <div class="stat-unit">%</div>
+                                </div>
+                                <div class="stat-date" id="bodyfat-date">Last updated: Today</div>
+                                <div class="edit-form hidden" id="bodyfat-edit-form">
+                                    <input type="number" id="bodyfat-input" step="0.1" placeholder="18.5">
+                                    <div class="edit-actions">
+                                        <button class="save-btn" id="save-bodyfat-btn">Save</button>
+                                        <button class="cancel-btn" id="cancel-bodyfat-btn">Cancel</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="stat-card bmi-card">
+                                <div class="stat-header">
+                                    <h3>BMI</h3>
+                                    <div class="info-icon" title="Automatically calculated from weight and height">
+                                        <i data-lucide="info"></i>
+                                    </div>
+                                </div>
+                                <div class="stat-display">
+                                    <div class="stat-value" id="current-bmi">22.9</div>
+                                    <div class="stat-unit">kg/m²</div>
+                                </div>
+                                <div class="bmi-category" id="bmi-category">Normal Weight</div>
+                            </div>
                         </div>
-
-
                     </div>
-
-                    <!-- Measurement History -->
-                    <div class="measurement-history">
-                        <h3>Measurement History</h3>
-                        <div class="history-filters">
-                            <select id="measurement-filter">
-                                <option value="all">All Measurements</option>
-                                <option value="weight">Weight Only</option>
-                                <option value="body-fat">Body Fat Only</option>
-                                <option value="measurements">Body Measurements</option>
-                            </select>
-                            <select id="time-filter">
-                                <option value="30">Last 30 days</option>
-                                <option value="90">Last 3 months</option>
-                                <option value="180">Last 6 months</option>
-                                <option value="365">Last year</option>
-                            </select>
-                        </div>
-                        <div class="measurement-list" id="measurement-list">
-                            <!-- Measurement entries will be populated here -->
+                    
+                    <!-- Weight History Section -->
+                    <div class="weight-history-section">
+                        <h3>Weight History</h3>
+                        <div class="weight-analytics-container">
+                            <div class="analytics-controls">
+                                <select id="weight-timeframe" class="timeframe-select">
+                                    <option value="30">Last 30 days</option>
+                                    <option value="90">Last 3 months</option>
+                                    <option value="180">Last 6 months</option>
+                                    <option value="365">Last year</option>
+                                </select>
+                                <button class="btn btn-secondary" id="refresh-weight-chart">
+                                    <i data-lucide="refresh-cw"></i>
+                                    Refresh
+                                </button>
+                            </div>
+                            
+                            <div class="weight-chart-container">
+                                <canvas id="weight-trajectory-chart" width="800" height="400"></canvas>
+                            </div>
+                            
+                            <div class="weight-stats-summary">
+                                <div class="weight-stat-card">
+                                    <div class="stat-value" id="weight-change">--</div>
+                                    <div class="stat-label">Total Change</div>
+                                </div>
+                                <div class="weight-stat-card">
+                                    <div class="stat-value" id="weight-trend">--</div>
+                                    <div class="stat-label">Trend</div>
+                                </div>
+                                <div class="weight-stat-card">
+                                    <div class="stat-value" id="avg-weekly-change">--</div>
+                                    <div class="stat-label">Avg Weekly Change</div>
+                                </div>
+                                <div class="weight-stat-card">
+                                    <div class="stat-value" id="entries-count">--</div>
+                                    <div class="stat-label">Entries</div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </section>
@@ -808,197 +827,160 @@
                 <section class="goals-section">
                     <div class="section-header">
                         <h2>Goals & Targets</h2>
-                        <button class="btn btn-primary" id="create-goal-btn">
-                            <i data-lucide="plus"></i>
-                            Create New Goal
-                        </button>
                     </div>
                     
-                    <div class="goals-grid">
-                        <!-- Primary Goals Card -->
-                        <div class="goal-card primary-goals">
-                            <h3>Primary Goals</h3>
-                            <div class="goal-item">
-                                <div class="goal-header">
-                                    <span class="goal-title">Weight Goal</span>
-                                    <span class="goal-status" id="weight-goal-status">Active</span>
+                    <!-- Goal Setup Form -->
+                    <div class="goal-setup-container" id="goal-setup-form">
+                        <div class="setup-header">
+                            <h3>Set Your Weight Goal</h3>
+                            <p>Answer a few questions to get personalized calorie recommendations</p>
+                        </div>
+                        
+                        <div class="setup-questions">
+                            <!-- Question 1: Goal Type -->
+                            <div class="question-card">
+                                <h4>What's your weight goal?</h4>
+                                <div class="goal-options">
+                                    <button class="goal-option" data-goal="lose">
+                                        <i data-lucide="trending-down"></i>
+                                        <span>Lose Weight</span>
+                                    </button>
+                                    <button class="goal-option" data-goal="gain">
+                                        <i data-lucide="trending-up"></i>
+                                        <span>Gain Weight</span>
+                                    </button>
+                                    <button class="goal-option" data-goal="maintain">
+                                        <i data-lucide="minus"></i>
+                                        <span>Maintain Weight</span>
+                                    </button>
                                 </div>
-                                <div class="goal-progress">
-                                    <div class="goal-info">
-                                        <span class="current-value" id="current-weight-goal">70 kg</span>
-                                        <span class="target-value">→ <span id="target-weight-goal">65 kg</span></span>
-                                    </div>
-                                    <div class="progress-bar-container">
-                                        <div class="progress-bar" id="weight-goal-progress"></div>
-                                    </div>
-                                    <div class="goal-meta">
-                                        <span class="progress-text" id="weight-progress-text">2.5 kg to go</span>
-                                        <span class="time-remaining" id="weight-time-remaining">12 weeks left</span>
+                            </div>
+                            
+                            <!-- Question 2: Activity Level -->
+                            <div class="question-card">
+                                <h4>What's your activity level?</h4>
+                                <div class="activity-options">
+                                    <button class="activity-option" data-activity="sedentary">
+                                        <span class="activity-title">Sedentary</span>
+                                        <span class="activity-desc">Little to no exercise</span>
+                                    </button>
+                                    <button class="activity-option" data-activity="light">
+                                        <span class="activity-title">Lightly Active</span>
+                                        <span class="activity-desc">Light exercise 1-3 days/week</span>
+                                    </button>
+                                    <button class="activity-option" data-activity="moderate">
+                                        <span class="activity-title">Moderately Active</span>
+                                        <span class="activity-desc">Moderate exercise 3-5 days/week</span>
+                                    </button>
+                                    <button class="activity-option" data-activity="active">
+                                        <span class="activity-title">Very Active</span>
+                                        <span class="activity-desc">Hard exercise 6-7 days/week</span>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Question 3: Target Weight -->
+                            <div class="question-card">
+                                <h4>What's your target weight?</h4>
+                                <div class="weight-input">
+                                    <input type="number" id="target-weight" placeholder="65" min="30" max="200" step="0.1">
+                                    <span>kg</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Question 4: Timeframe -->
+                            <div class="question-card">
+                                <h4>What's your target timeframe?</h4>
+                                <div class="timeframe-input">
+                                    <input type="number" id="target-weeks" placeholder="12" min="4" max="52">
+                                    <span>weeks</span>
+                                </div>
+                            </div>
+                            
+                            <button class="btn btn-primary calculate-btn" id="calculate-goals">
+                                Calculate My Goals
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Goals Results -->
+                    <div class="goals-results" id="goals-results" style="display: none;">
+                        <div class="results-header">
+                            <h3>Your Personalized Plan</h3>
+                            <button class="btn btn-secondary" id="edit-goals">Edit Goals</button>
+                        </div>
+                        
+                        <div class="goals-grid">
+                            <!-- Daily Calories Card -->
+                            <div class="goal-card calories-goal">
+                                <h4>Daily Calorie Target</h4>
+                                <div class="calorie-target">
+                                    <span class="target-calories" id="daily-calories-target">2000</span>
+                                    <span class="unit">kcal</span>
+                                </div>
+                                <div class="calorie-breakdown">
+                                    <div class="macro-split">
+                                        <span>Protein: <strong id="protein-target">150g</strong></span>
+                                        <span>Carbs: <strong id="carbs-target">250g</strong></span>
+                                        <span>Fat: <strong id="fat-target">67g</strong></span>
                                     </div>
                                 </div>
                             </div>
-
-                            <div class="goal-item">
-                                <div class="goal-header">
-                                    <span class="goal-title">Body Fat Goal</span>
-                                    <span class="goal-status" id="bodyfat-goal-status">Active</span>
-                                </div>
-                                <div class="goal-progress">
-                                    <div class="goal-info">
-                                        <span class="current-value" id="current-bodyfat-goal">22%</span>
-                                        <span class="target-value">→ <span id="target-bodyfat-goal">18%</span></span>
+                            
+                            <!-- Meal Distribution Card -->
+                            <div class="goal-card meals-goal">
+                                <h4>Recommended Meal Calories</h4>
+                                <div class="meal-distribution">
+                                    <div class="meal-item">
+                                        <span class="meal-name">Breakfast</span>
+                                        <span class="meal-calories" id="breakfast-calories">400 kcal</span>
                                     </div>
-                                    <div class="progress-bar-container">
-                                        <div class="progress-bar" id="bodyfat-goal-progress"></div>
+                                    <div class="meal-item">
+                                        <span class="meal-name">Lunch</span>
+                                        <span class="meal-calories" id="lunch-calories">600 kcal</span>
                                     </div>
-                                    <div class="goal-meta">
-                                        <span class="progress-text" id="bodyfat-progress-text">4% to go</span>
-                                        <span class="time-remaining" id="bodyfat-time-remaining">16 weeks left</span>
+                                    <div class="meal-item">
+                                        <span class="meal-name">Dinner</span>
+                                        <span class="meal-calories" id="dinner-calories">700 kcal</span>
+                                    </div>
+                                    <div class="meal-item">
+                                        <span class="meal-name">Snacks</span>
+                                        <span class="meal-calories" id="snacks-calories">300 kcal</span>
                                     </div>
                                 </div>
                             </div>
                         </div>
-
-                        <!-- Activity Goals Card -->
-                        <div class="goal-card activity-goals">
-                            <h3>Activity Goals</h3>
-                            <div class="activity-grid">
-                                <div class="activity-item">
-                                    <i data-lucide="footprints"></i>
-                                    <div class="activity-content">
-                                        <span class="activity-title">Daily Steps</span>
-                                        <div class="activity-progress">
-                                            <span class="activity-current" id="daily-steps">8,432</span>
-                                            <span class="activity-target">/ 10,000</span>
-                                        </div>
-                                        <div class="activity-bar">
-                                            <div class="activity-fill" id="steps-progress"></div>
-                                        </div>
+                        
+                        <!-- Goal Timeline -->
+                        <div class="goal-timeline">
+                            <h4>Goal Timeline</h4>
+                            <div class="timeline-content">
+                                <div class="timeline-stats">
+                                    <div class="stat-item">
+                                        <span class="stat-label">Current Weight</span>
+                                        <span class="stat-value" id="timeline-current-weight">75 kg</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span class="stat-label">Target Weight</span>
+                                        <span class="stat-value" id="timeline-target-weight">70 kg</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span class="stat-label">Weekly Deficit</span>
+                                        <span class="stat-value" id="weekly-deficit">3500 kcal</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span class="stat-label">Expected Loss/Week</span>
+                                        <span class="stat-value" id="weekly-loss">0.5 kg</span>
                                     </div>
                                 </div>
-                                <div class="activity-item">
-                                    <i data-lucide="flame"></i>
-                                    <div class="activity-content">
-                                        <span class="activity-title">Calories Burned</span>
-                                        <div class="activity-progress">
-                                            <span class="activity-current" id="calories-burned">420</span>
-                                            <span class="activity-target">/ 500</span>
-                                        </div>
-                                        <div class="activity-bar">
-                                            <div class="activity-fill" id="calories-progress"></div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="activity-item">
-                                    <i data-lucide="dumbbell"></i>
-                                    <div class="activity-content">
-                                        <span class="activity-title">Workouts/Week</span>
-                                        <div class="activity-progress">
-                                            <span class="activity-current" id="weekly-workouts">3</span>
-                                            <span class="activity-target">/ 4</span>
-                                        </div>
-                                        <div class="activity-bar">
-                                            <div class="activity-fill" id="workouts-progress"></div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Nutrition Goals Card -->
-                        <div class="goal-card nutrition-goals">
-                            <h3>Nutrition Goals</h3>
-                            <div class="nutrition-targets">
-                                <div class="target-item">
-                                    <label>Daily Calories</label>
-                                    <div class="target-input">
-                                        <input type="number" id="calorie-target" value="2800">
-                                        <span class="unit">kcal</span>
-                                    </div>
-                                </div>
-                                <div class="target-item">
-                                    <label>Daily Protein</label>
-                                    <div class="target-input">
-                                        <input type="number" id="protein-target" value="120">
-                                        <span class="unit">g</span>
-                                    </div>
-                                </div>
-                                <div class="target-item">
-                                    <label>Activity Level</label>
-                                    <select id="activity-level">
-                                        <option value="sedentary">Sedentary</option>
-                                        <option value="light">Light Activity</option>
-                                        <option value="moderate">Moderate Activity</option>
-                                        <option value="active">Active</option>
-                                        <option value="very-active">Very Active</option>
-                                    </select>
-                                </div>
-                                <button class="btn btn-secondary" id="update-nutrition-goals">
-                                    <i data-lucide="save"></i>
-                                    Update Goals
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Goal Timeline Card -->
-                        <div class="goal-card timeline-card">
-                            <h3>Goal Timeline</h3>
-                            <div class="timeline">
-                                <div class="timeline-item completed">
-                                    <div class="timeline-marker"></div>
-                                    <div class="timeline-content">
-                                        <h4>Goal Created</h4>
-                                        <p>Set target weight to 65kg</p>
-                                        <span class="timeline-date">3 months ago</span>
-                                    </div>
-                                </div>
-                                <div class="timeline-item completed">
-                                    <div class="timeline-marker"></div>
-                                    <div class="timeline-content">
-                                        <h4>Milestone 1</h4>
-                                        <p>Lost first 2kg</p>
-                                        <span class="timeline-date">6 weeks ago</span>
-                                    </div>
-                                </div>
-                                <div class="timeline-item active">
-                                    <div class="timeline-marker"></div>
-                                    <div class="timeline-content">
-                                        <h4>Current Progress</h4>
-                                        <p>50% towards goal weight</p>
-                                        <span class="timeline-date">Now</span>
-                                    </div>
-                                </div>
-                                <div class="timeline-item">
-                                    <div class="timeline-marker"></div>
-                                    <div class="timeline-content">
-                                        <h4>Target Completion</h4>
-                                        <p>Reach 65kg target weight</p>
-                                        <span class="timeline-date">In 12 weeks</span>
-                                    </div>
+                                
+                                <div class="timeline-chart">
+                                    <canvas id="weight-prediction-chart" width="400" height="200"></canvas>
                                 </div>
                             </div>
                         </div>
                     </div>
-
-                    <!-- Goal Management -->
-                    <div class="goal-management">
-                        <h3>Manage Goals</h3>
-                        <div class="goal-actions">
-                            <button class="btn btn-secondary" id="edit-goals-btn">
-                                <i data-lucide="edit"></i>
-                                Edit Current Goals
-                            </button>
-                            <button class="btn btn-secondary" id="goal-history-btn">
-                                <i data-lucide="history"></i>
-                                View Goal History
-                            </button>
-                            <button class="btn btn-outline" id="reset-goals-btn">
-                                <i data-lucide="refresh-cw"></i>
-                                Reset Goals
-                            </button>
-                        </div>
-                    </div>
-                </section>
+                </div>
             </div>
 
             <!-- AI Insights Content -->
@@ -1006,51 +988,176 @@
                 <section class="ai-insights-section">
                     <div class="section-header">
                         <h2>AI-Powered Insights</h2>
-                        <button class="btn btn-primary" id="refresh-insights-btn">
-                            <i data-lucide="refresh-cw"></i>
-                            Refresh Insights
-                        </button>
+                        <div class="insights-controls">
+                            <select id="insights-timeframe" class="timeframe-selector">
+                                <option value="daily">Daily Analysis</option>
+                                <option value="weekly">Weekly Trends</option>
+                                <option value="monthly">Monthly Overview</option>
+                            </select>
+                            <button class="btn btn-primary" id="refresh-insights-btn">
+                                <i data-lucide="refresh-cw"></i>
+                                Analyze Data
+                            </button>
+                        </div>
                     </div>
                     
-                    <div class="insights-grid">
-                        <!-- Today's Insights -->
-                        <div class="insight-card daily-insights">
-                            <div class="insight-header">
-                                <h3>Today's Recommendations</h3>
-                                <span class="insight-badge">Daily</span>
+                    <!-- Daily Insights -->
+                    <div class="insights-view" id="daily-insights-view">
+                        <div class="insights-header">
+                            <h3>Today's Nutritional Analysis</h3>
+                            <div class="insights-date" id="daily-date"></div>
+                        </div>
+                        
+                        <div class="analytics-grid">
+                            <!-- Calorie Status -->
+                            <div class="insight-analytics-card">
+                                <div class="card-header">
+                                    <h4>Calorie Deficit Analysis</h4>
+                                    <div class="status-indicator" id="deficit-status"></div>
+                                </div>
+                                <div class="deficit-chart-container">
+                                    <canvas id="daily-deficit-chart"></canvas>
+                                </div>
+                                <div class="deficit-summary">
+                                    <div class="deficit-stat">
+                                        <span class="stat-label">Target Deficit</span>
+                                        <span class="stat-value" id="target-deficit">-500 kcal</span>
+                                    </div>
+                                    <div class="deficit-stat">
+                                        <span class="stat-label">Current Status</span>
+                                        <span class="stat-value" id="current-deficit">-320 kcal</span>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="insight-content" id="daily-insights-content">
-                                <div class="loading-insights">
-                                    <i data-lucide="brain"></i>
-                                    <p>Analyzing your data...</p>
+
+                            <!-- Meal Recommendations -->
+                            <div class="insight-analytics-card">
+                                <div class="card-header">
+                                    <h4>Smart Meal Recommendations</h4>
+                                </div>
+                                <div class="meal-recommendations" id="meal-recommendations">
+                                    <!-- Will be populated by JavaScript -->
+                                </div>
+                            </div>
+
+                            <!-- Progress Toward Goal -->
+                            <div class="insight-analytics-card">
+                                <div class="card-header">
+                                    <h4>Daily Goal Progress</h4>
+                                </div>
+                                <div class="goal-progress-visual" id="daily-goal-progress">
+                                    <!-- Progress visualization -->
                                 </div>
                             </div>
                         </div>
+                    </div>
 
-                        <!-- Weekly Analysis -->
-                        <div class="insight-card weekly-insights">
-                            <div class="insight-header">
-                                <h3>Weekly Analysis</h3>
-                                <span class="insight-badge">Weekly</span>
+                    <!-- Weekly Insights -->
+                    <div class="insights-view" id="weekly-insights-view" style="display: none;">
+                        <div class="insights-header">
+                            <h3>Weekly Nutrition Analysis</h3>
+                            <div class="insights-date" id="weekly-date"></div>
+                        </div>
+                        
+                        <div class="analytics-grid">
+                            <!-- Food Quality Analysis -->
+                            <div class="insight-analytics-card wide">
+                                <div class="card-header">
+                                    <h4>Food Quality Breakdown</h4>
+                                </div>
+                                <div class="food-quality-chart-container">
+                                    <canvas id="food-quality-chart"></canvas>
+                                </div>
+                                <div class="food-categories">
+                                    <div class="category-stat healthy">
+                                        <span class="category-label">Healthy Foods</span>
+                                        <span class="category-value" id="healthy-foods-count">0</span>
+                                    </div>
+                                    <div class="category-stat moderate">
+                                        <span class="category-label">Moderate Foods</span>
+                                        <span class="category-value" id="moderate-foods-count">0</span>
+                                    </div>
+                                    <div class="category-stat junk">
+                                        <span class="category-label">Junk Foods</span>
+                                        <span class="category-value" id="junk-foods-count">0</span>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="insight-content" id="weekly-insights-content">
-                                <div class="loading-insights">
-                                    <i data-lucide="brain"></i>
-                                    <p>Processing weekly patterns...</p>
+
+                            <!-- Weekly Deficit Trend -->
+                            <div class="insight-analytics-card">
+                                <div class="card-header">
+                                    <h4>Weekly Deficit Trend</h4>
+                                </div>
+                                <canvas id="weekly-deficit-chart"></canvas>
+                                <div class="trend-summary" id="weekly-trend-summary">
+                                    <!-- Trend analysis -->
+                                </div>
+                            </div>
+
+                            <!-- Next Week Strategy -->
+                            <div class="insight-analytics-card">
+                                <div class="card-header">
+                                    <h4>Next Week Strategy</h4>
+                                </div>
+                                <div class="strategy-recommendations" id="weekly-strategy">
+                                    <!-- Strategy recommendations -->
                                 </div>
                             </div>
                         </div>
+                    </div>
 
-                        <!-- Monthly Trends -->
-                        <div class="insight-card monthly-insights">
-                            <div class="insight-header">
-                                <h3>Monthly Trends</h3>
-                                <span class="insight-badge">Monthly</span>
+                    <!-- Monthly Insights -->
+                    <div class="insights-view" id="monthly-insights-view" style="display: none;">
+                        <div class="insights-header">
+                            <h3>Monthly Progress Overview</h3>
+                            <div class="insights-date" id="monthly-date"></div>
+                        </div>
+                        
+                        <div class="analytics-grid">
+                            <!-- Goal Achievement Progress -->
+                            <div class="insight-analytics-card wide">
+                                <div class="card-header">
+                                    <h4>Goal Achievement Timeline</h4>
+                                </div>
+                                <canvas id="monthly-goal-chart"></canvas>
+                                <div class="achievement-stats">
+                                    <div class="achievement-stat">
+                                        <span class="stat-label">Weight Lost</span>
+                                        <span class="stat-value" id="monthly-weight-lost">0 kg</span>
+                                    </div>
+                                    <div class="achievement-stat">
+                                        <span class="stat-label">Goal Progress</span>
+                                        <span class="stat-value" id="monthly-goal-progress">0%</span>
+                                    </div>
+                                    <div class="achievement-stat">
+                                        <span class="stat-label">Avg Deficit</span>
+                                        <span class="stat-value" id="monthly-avg-deficit">0 kcal</span>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="insight-content" id="monthly-insights-content">
-                                <div class="loading-insights">
-                                    <i data-lucide="brain"></i>
-                                    <p>Evaluating long-term trends...</p>
+
+                            <!-- Consistency Analysis -->
+                            <div class="insight-analytics-card">
+                                <div class="card-header">
+                                    <h4>Consistency Score</h4>
+                                </div>
+                                <div class="consistency-visual" id="monthly-consistency">
+                                    <!-- Consistency visualization -->
+                                </div>
+                            </div>
+
+                            <!-- Long-term Recommendations -->
+                            <div class="insight-analytics-card">
+                                <div class="card-header">
+                                    <h4>Long-term Strategy</h4>
+                                </div>
+                                <div class="longterm-recommendations" id="monthly-recommendations">
+                                    <!-- Long-term recommendations -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                                 </div>
                             </div>
                         </div>

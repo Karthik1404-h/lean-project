@@ -111,7 +111,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let activeStream = null;
     let scanningInterval = null;
     let currentMealType = null;
-    window.currentUser = null; // Make currentUser globally accessible
+    let currentUser = null; // Local reference to window.currentUser
     let currentImageBase64 = null;
     let isAnalyzing = false; // Add flag to prevent multiple simultaneous API calls
     let analysisSuccessful = false; // Add flag to track if food was successfully identified
@@ -267,6 +267,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (sidebarSignout) {
             sidebarSignout.addEventListener('click', () => {
                 console.log('Sidebar signout button clicked');
+
+
+
+
+
+
+
+
+
+
+
                 signOutUser();
             });
         }
@@ -314,10 +325,47 @@ document.addEventListener('DOMContentLoaded', () => {
         googleSignInBtn.addEventListener('click', handleGoogleSignIn);
     }
 
-    // Body Metrics event listeners
-    const logMetricsBtn = document.querySelector('.log-metrics-btn');
-    if (logMetricsBtn) {
-        logMetricsBtn.addEventListener('click', handleLogMetrics);
+    // Body Metrics inline editing event listeners
+    const editWeightBtn = document.getElementById('edit-weight-btn');
+    const editHeightBtn = document.getElementById('edit-height-btn');
+    const editBodyfatBtn = document.getElementById('edit-bodyfat-btn');
+    
+    if (editWeightBtn) {
+        editWeightBtn.addEventListener('click', () => toggleEditForm('weight'));
+    }
+    if (editHeightBtn) {
+        editHeightBtn.addEventListener('click', () => toggleEditForm('height'));
+    }
+    if (editBodyfatBtn) {
+        editBodyfatBtn.addEventListener('click', () => toggleEditForm('bodyfat'));
+    }
+
+    // Save and cancel buttons for each metric
+    const saveWeightBtn = document.getElementById('save-weight-btn');
+    const saveHeightBtn = document.getElementById('save-height-btn');
+    const saveBodyfatBtn = document.getElementById('save-bodyfat-btn');
+    
+    const cancelWeightBtn = document.getElementById('cancel-weight-btn');
+    const cancelHeightBtn = document.getElementById('cancel-height-btn');
+    const cancelBodyfatBtn = document.getElementById('cancel-bodyfat-btn');
+    
+    if (saveWeightBtn) saveWeightBtn.addEventListener('click', () => saveMetric('weight'));
+    if (saveHeightBtn) saveHeightBtn.addEventListener('click', () => saveMetric('height'));
+    if (saveBodyfatBtn) saveBodyfatBtn.addEventListener('click', () => saveMetric('bodyfat'));
+    
+    if (cancelWeightBtn) cancelWeightBtn.addEventListener('click', () => cancelEdit('weight'));
+    if (cancelHeightBtn) cancelHeightBtn.addEventListener('click', () => cancelEdit('height'));
+    if (cancelBodyfatBtn) cancelBodyfatBtn.addEventListener('click', () => cancelEdit('bodyfat'));
+
+    // Weight analytics event listeners
+    const refreshWeightChartBtn = document.getElementById('refresh-weight-chart');
+    const weightTimeframeSelect = document.getElementById('weight-timeframe');
+    
+    if (refreshWeightChartBtn) {
+        refreshWeightChartBtn.addEventListener('click', loadWeightAnalytics);
+    }
+    if (weightTimeframeSelect) {
+        weightTimeframeSelect.addEventListener('change', loadWeightAnalytics);
     }
 
     // Goals event listeners
@@ -393,7 +441,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 clearAllUserData();
             }
             
+            // Update both references
             window.currentUser = user;
+            currentUser = user;
             updateAuthUI(user);
             
             if (user) {
@@ -3402,6 +3452,9 @@ document.addEventListener('DOMContentLoaded', () => {
     window.stopCamera = stopCamera;
     window.toggleAutoDetection = toggleAutoDetection;
     window.retakePhoto = retakePhoto;
+    window.toggleEditForm = toggleEditForm;
+    window.saveMetric = saveMetric;
+    window.cancelEdit = cancelEdit;
 
     function showUploadOption() {
         if (mealEntryContent) {
@@ -4713,27 +4766,143 @@ document.addEventListener('DOMContentLoaded', () => {
     // ========================
 
     // Body Metrics Initialization
-    function initializeBodyMetrics() {
+    async function initializeBodyMetrics() {
         console.log('🏃‍♂️ Initializing Body Metrics...');
         
-        // Set some default values for testing
-        updateElement('current-weight', '70 kg');
-        updateElement('current-height', '175 cm');
-        updateElement('current-bmi', '22.9');
-        updateElement('bmi-category', 'Normal');
-        updateElement('current-body-fat', '18%');
-        updateElement('weight-date', 'Last updated: Today');
+        if (currentUser) {
+            await loadCurrentBodyMetrics();
+        } else {
+            // Set default values for testing when not logged in
+            updateElement('current-weight', '70.0');
+            updateElement('current-height', '175');
+            updateElement('current-bmi', '22.9');
+            updateElement('bmi-category', 'Normal Weight');
+            updateElement('current-body-fat', '18.5');
+            updateElement('weight-date', 'Last updated: Today');
+            updateElement('bodyfat-date', 'Last updated: Today');
+        }
         
-        // Set body measurements
-        updateElement('measurement-chest', '95 cm');
-        updateElement('measurement-waist', '80 cm');
-        updateElement('measurement-hips', '92 cm');
-        updateElement('measurement-arms', '35 cm');
-        updateElement('measurement-thighs', '55 cm');
-        updateElement('measurement-neck', '38 cm');
+        // Load weight analytics for the weight history section
+        console.log('📊 Loading weight analytics in Body Metrics...');
+        setTimeout(async () => {
+            await loadWeightAnalytics();
+        }, 100);
         
-        setupBodyMetricsEventListeners();
-        console.log('✅ Body Metrics initialized with sample data');
+        console.log('✅ Body Metrics initialized');
+    }
+
+    async function loadCurrentBodyMetrics() {
+        if (!currentUser) return;
+        
+        try {
+            console.log('📊 Loading current body metrics from Firestore...');
+            
+            const currentMetricsRef = window.firebaseDb.doc(window.firebaseDb.db, 'users', currentUser.uid, 'bodyMetrics', 'current');
+            const doc = await window.firebaseDb.getDoc(currentMetricsRef);
+            
+            if (doc.exists()) {
+                const data = doc.data();
+                console.log('📊 Loaded body metrics:', data);
+                
+                // Update weight
+                if (data.weight) {
+                    updateElement('current-weight', data.weight.toString());
+                    if (data.weightUpdatedAt) {
+                        const date = data.weightUpdatedAt.toDate ? data.weightUpdatedAt.toDate() : new Date(data.weightUpdatedAt);
+                        updateElement('weight-date', `Last updated: ${date.toLocaleDateString()}`);
+                    }
+                }
+                
+                // Update height
+                if (data.height) {
+                    updateElement('current-height', data.height.toString());
+                }
+                
+                return data; // Return the data for use in other functions
+            } else {
+                console.log('📊 No current body metrics found');
+                return null;
+            }
+        } catch (error) {
+            console.error('❌ Error loading body metrics:', error);
+            return null;
+        }
+    }
+
+    // Function to get current body metrics for Goals calculation
+    async function getCurrentBodyMetrics() {
+        if (!currentUser || !window.firebaseDb) {
+            console.log('📊 No user or Firebase, returning defaults');
+            return { weight: 70, height: 175 };
+        }
+        
+        try {
+            const currentMetricsRef = window.firebaseDb.doc(window.firebaseDb.db, 'users', currentUser.uid, 'bodyMetrics', 'current');
+            const doc = await window.firebaseDb.getDoc(currentMetricsRef);
+            
+            if (doc.exists()) {
+                const data = doc.data();
+                console.log('📊 Retrieved body metrics for goals:', data);
+                return {
+                    weight: data.weight || 70,
+                    height: data.height || 175,
+                    bodyFat: data.bodyFat || null
+                };
+            } else {
+                console.log('📊 No body metrics found, using defaults');
+                return { weight: 70, height: 175 };
+            }
+        } catch (error) {
+            console.error('❌ Error getting body metrics:', error);
+            return { weight: 70, height: 175 };
+        }
+    }
+
+    // Function to get user profile data for Goals calculation
+    async function getUserProfile() {
+        console.log('📊 Getting user profile...');
+        
+        // First try to get from form elements (if profile page has been visited)
+        const ageFromForm = document.getElementById('profile-age')?.value;
+        const genderFromForm = document.getElementById('profile-gender')?.value;
+        
+        if (ageFromForm && genderFromForm) {
+            console.log('📊 Got profile from form elements:', { age: ageFromForm, gender: genderFromForm });
+            return {
+                age: parseInt(ageFromForm) || 25,
+                gender: genderFromForm || 'male'
+            };
+        }
+        
+        // If not available from form, try Firebase
+        if (!currentUser || !window.firebaseDb) {
+            console.log('📊 No user or Firebase, returning default profile');
+            return { age: 25, gender: 'male' };
+        }
+        
+        try {
+            const userProfileRef = window.firebaseDb.doc(window.firebaseDb.db, 'users', currentUser.uid);
+            const profileDoc = await window.firebaseDb.getDoc(userProfileRef);
+            
+            if (profileDoc.exists()) {
+                const profile = profileDoc.data();
+                console.log('📊 Retrieved profile from Firebase:', profile);
+                
+                // Ensure we always return valid values
+                const age = profile.age ? parseInt(profile.age) : 25;
+                const gender = profile.gender || 'male';
+                
+                console.log('📊 Parsed profile values:', { age, gender });
+                
+                return { age, gender };
+            } else {
+                console.log('📊 No profile found in Firebase, using defaults');
+                return { age: 25, gender: 'male' };
+            }
+        } catch (error) {
+            console.error('❌ Error getting profile:', error);
+            return { age: 25, gender: 'male' };
+        }
     }
 
     async function loadBodyMetricsData() {
@@ -4860,19 +5029,15 @@ document.addEventListener('DOMContentLoaded', () => {
     function initializeGoals() {
         console.log('🎯 Initializing Goals...');
         
-        // Set sample goal data
-        updateElement('current-weight-goal', '70 kg');
-        updateElement('target-weight-goal', '65 kg');
-        updateElement('weight-goal-status', 'Active');
-        updateElement('weight-progress-text', '2.5 kg to go');
-        updateElement('weight-time-remaining', '12 weeks left');
+        // Note: Old goal elements have been replaced with new questionnaire interface
+        // Only update elements that still exist
         
-        // Update activity displays
+        // Update activity displays (if elements exist)
         updateElement('daily-steps', '8,432');
         updateElement('calories-burned', '420');
         updateElement('weekly-workouts', '3');
         
-        // Set nutrition targets with default values
+        // Set nutrition targets with default values (if elements exist)
         const calorieTarget = document.getElementById('calorie-target');
         const proteinTarget = document.getElementById('protein-target');
         const activityLevel = document.getElementById('activity-level');
@@ -4881,8 +5046,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (proteinTarget) proteinTarget.value = 120;
         if (activityLevel) activityLevel.value = 'moderate';
         
-        // Update progress bars
-        updateProgressBar('weight-goal-progress', 50);
+        // Update progress bars (if elements exist)
         updateProgressBar('steps-progress', 84);
         updateProgressBar('calories-progress', 84);
         updateProgressBar('workouts-progress', 75);
@@ -4902,23 +5066,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = goalsDoc.data();
                 
                 // Update weight goal display
-                updateElement('current-weight-goal', data.currentWeight ? `${data.currentWeight} kg` : '--');
-                updateElement('target-weight-goal', data.targetWeight ? `${data.targetWeight} kg` : '--');
-                updateElement('weight-goal-status', data.weightGoalStatus || 'Active');
+                // Note: Old goal elements have been replaced with new questionnaire interface
+                // Skip updating elements that no longer exist
                 
-                // Update progress bars and text
-                if (data.currentWeight && data.targetWeight) {
-                    const progress = calculateGoalProgress(data.currentWeight, data.targetWeight, data.startWeight || data.currentWeight);
-                    updateProgressBar('weight-goal-progress', progress);
-                    updateElement('weight-progress-text', `${Math.abs(data.targetWeight - data.currentWeight).toFixed(1)} kg to go`);
-                }
-                
-                // Update activity goals
+                // Update activity goals (if elements exist)
                 updateElement('daily-steps', data.dailySteps || '0');
                 updateElement('calories-burned', data.caloriesBurned || '0');
                 updateElement('weekly-workouts', data.weeklyWorkouts || '0');
                 
-                // Update nutrition targets
+                // Update nutrition targets (if elements exist)
                 const calorieTarget = document.getElementById('calorie-target');
                 const proteinTarget = document.getElementById('protein-target');
                 if (calorieTarget) calorieTarget.value = data.calorieTarget || 2800;
@@ -5471,6 +5627,532 @@ document.addEventListener('DOMContentLoaded', () => {
         if (document.getElementById('body-fat-input')) document.getElementById('body-fat-input').value = '';
     }
 
+    // Body Metrics inline editing functions
+    function toggleEditForm(metric) {
+        const editForm = document.getElementById(`${metric}-edit-form`);
+        const statDisplay = document.querySelector(`.${metric}-card .stat-display`);
+        
+        if (editForm && statDisplay) {
+            editForm.classList.toggle('hidden');
+            
+            // If showing edit form, populate with current value and hide stat display
+            if (!editForm.classList.contains('hidden')) {
+                const currentElement = document.getElementById(`current-${metric}`);
+                const input = document.getElementById(`${metric}-input`);
+                if (input && currentElement) {
+                    const currentValue = currentElement.textContent || '';
+                    input.value = parseFloat(currentValue) || '';
+                    input.focus();
+                }
+                statDisplay.style.opacity = '0.3';
+            } else {
+                statDisplay.style.opacity = '1';
+            }
+        }
+    }
+
+    async function saveMetric(metric) {
+        const input = document.getElementById(`${metric}-input`);
+        const value = parseFloat(input.value);
+        
+        if (!value || value <= 0) {
+            showNotification('Please enter a valid value', 'error');
+            return;
+        }
+
+        try {
+            // Update display
+            const currentValueElement = document.getElementById(`current-${metric}`);
+            if (currentValueElement) {
+                currentValueElement.textContent = value.toFixed(metric === 'height' ? 0 : 1);
+            }
+
+            // Update date
+            const dateElement = document.getElementById(`${metric}-date`);
+            if (dateElement) {
+                dateElement.textContent = `Last updated: ${new Date().toLocaleDateString()}`;
+            }
+
+            // Calculate and update BMI if weight or height changed
+            if (metric === 'weight' || metric === 'height') {
+                updateBMI();
+            }
+
+            // Save to Firestore
+            await saveBodyMetricToFirestore(metric, value);
+
+            // Hide edit form and show stat display
+            cancelEdit(metric);
+            
+            showNotification(`${metric.charAt(0).toUpperCase() + metric.slice(1)} updated successfully!`);
+        } catch (error) {
+            console.error('Error saving metric:', error);
+            showNotification('Error saving data', 'error');
+        }
+    }
+
+    function cancelEdit(metric) {
+        const editForm = document.getElementById(`${metric}-edit-form`);
+        const statDisplay = document.querySelector(`.${metric}-card .stat-display`);
+        
+        if (editForm && statDisplay) {
+            editForm.classList.add('hidden');
+            statDisplay.style.opacity = '1';
+        }
+    }
+
+    function updateBMI() {
+        const weightElement = document.getElementById('current-weight');
+        const heightElement = document.getElementById('current-height');
+        const bmiElement = document.getElementById('current-bmi');
+        const categoryElement = document.getElementById('bmi-category');
+        
+        if (weightElement && heightElement && bmiElement && categoryElement) {
+            const weight = parseFloat(weightElement.textContent);
+            const height = parseFloat(heightElement.textContent);
+            
+            if (weight > 0 && height > 0) {
+                const heightInMeters = height / 100;
+                const bmi = weight / (heightInMeters * heightInMeters);
+                
+                bmiElement.textContent = bmi.toFixed(1);
+                
+                // Update category
+                let category, categoryClass;
+                if (bmi < 18.5) {
+                    category = 'Underweight';
+                    categoryClass = 'underweight';
+                } else if (bmi < 25) {
+                    category = 'Normal Weight';
+                    categoryClass = 'normal';
+                } else if (bmi < 30) {
+                    category = 'Overweight';
+                    categoryClass = 'overweight';
+                } else {
+                    category = 'Obese';
+                    categoryClass = 'obese';
+                }
+                
+                categoryElement.textContent = category;
+                categoryElement.setAttribute('data-category', categoryClass);
+            }
+        }
+    }
+
+    async function saveBodyMetricToFirestore(metric, value) {
+        if (!currentUser) {
+            console.log('❌ No current user for saving body metrics');
+            return;
+        }
+        
+        try {
+            console.log(`💾 Saving ${metric}: ${value} for user:`, currentUser.uid);
+            const timestamp = new Date();
+            
+            // Save current metrics using the correct Firestore syntax
+            const userDocRef = window.firebaseDb.doc(window.firebaseDb.db, 'users', currentUser.uid);
+            const currentMetricsRef = window.firebaseDb.doc(window.firebaseDb.db, 'users', currentUser.uid, 'bodyMetrics', 'current');
+            
+            await window.firebaseDb.setDoc(currentMetricsRef, {
+                [metric]: value,
+                [`${metric}UpdatedAt`]: timestamp,
+                lastUpdated: timestamp
+            }, { merge: true });
+            
+            console.log(`✅ Current ${metric} saved to Firestore`);
+            
+            // Save to history for analytics using date as document ID
+            const dateKey = timestamp.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+            const historyDocRef = window.firebaseDb.doc(window.firebaseDb.db, 'users', currentUser.uid, 'bodyHistory', dateKey);
+            
+            await window.firebaseDb.setDoc(historyDocRef, {
+                [metric]: value,
+                timestamp: timestamp,
+                date: dateKey
+            }, { merge: true });
+            
+            console.log(`✅ ${metric} history saved to Firestore for date:`, dateKey);
+            
+        } catch (error) {
+            console.error(`❌ Error saving ${metric} to Firestore:`, error);
+            console.error('Error details:', error.code, error.message);
+            throw error;
+        }
+    }
+
+    // Weight Analytics Functions
+    async function loadWeightAnalytics() {
+        console.log('📊 loadWeightAnalytics called, currentUser:', !!currentUser);
+        
+        if (!currentUser) {
+            console.log('❌ No current user for weight analytics - showing empty state');
+            showEmptyWeightState();
+            return;
+        }
+        
+        try {
+            const timeframeSelect = document.getElementById('weight-timeframe');
+            const days = parseInt(timeframeSelect?.value || '90');
+            
+            console.log(`📊 Loading weight analytics for ${days} days...`);
+            
+            const weightData = await getWeightHistory(days);
+            
+            if (weightData.length === 0) {
+                console.log('📊 No weight data found in Firebase - showing empty state');
+                showEmptyWeightState();
+            } else {
+                console.log(`📊 Rendering chart with ${weightData.length} data points`);
+                renderWeightChart(weightData);
+                updateWeightStats(weightData);
+            }
+            
+        } catch (error) {
+            console.error('❌ Error loading weight analytics:', error);
+            showNotification('Error loading weight data', 'error');
+            showEmptyWeightState();
+        }
+    }
+
+    function showEmptyWeightState() {
+        console.log('📊 Showing empty weight state');
+        
+        const canvas = document.getElementById('weight-trajectory-chart');
+        if (!canvas) return;
+        
+        const ctx = canvas.getContext('2d');
+        
+        // Clear canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw empty state message
+        ctx.fillStyle = '#64748b';
+        ctx.font = 'bold 20px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('No Weight Data Available', canvas.width / 2, canvas.height / 2 - 20);
+        
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '16px sans-serif';
+        ctx.fillText('Start logging your weight to see analytics here', canvas.width / 2, canvas.height / 2 + 10);
+        
+        // Update stats to show empty state
+        updateElement('weight-change', '--');
+        updateElement('weight-trend', '--');
+        updateElement('avg-weekly-change', '--');
+        updateElement('entries-count', '0');
+    }
+
+    function showSampleWeightData() {
+        console.log('📊 Showing sample weight data');
+        
+        // Check if we're in the Body Metrics tab
+        const bodyMetricsContent = document.getElementById('body-metrics-content');
+        console.log('📊 Body Metrics tab visible:', bodyMetricsContent && bodyMetricsContent.style.display !== 'none');
+        
+        // If not in body metrics tab, switch to it
+        if (!bodyMetricsContent || bodyMetricsContent.style.display === 'none') {
+            console.log('📊 Switching to Body Metrics tab...');
+            switchSidebarTab('body-metrics');
+            // Add a small delay to ensure DOM is rendered
+            setTimeout(() => {
+                renderSampleChart();
+            }, 200);
+        } else {
+            renderSampleChart();
+        }
+        
+        function renderSampleChart() {
+            // Generate sample data for the last 30 days
+            const sampleData = [];
+            const today = new Date();
+        
+        for (let i = 29; i >= 0; i--) {
+            const date = new Date();
+            date.setDate(today.getDate() - i);
+            
+            // Generate realistic weight fluctuation around 75kg
+            const baseWeight = 75;
+            const variation = (Math.random() - 0.5) * 3; // ±1.5kg variation
+            const weight = baseWeight + variation + (i * 0.05); // Slight upward trend
+            
+            sampleData.push({
+                date: date,
+                weight: Math.round(weight * 10) / 10 // Round to 1 decimal
+            });
+        }
+        
+        console.log('📊 Generated sample data:', sampleData.length, 'points');
+        renderWeightChart(sampleData);
+        updateWeightStats(sampleData);
+        }
+    }
+
+    async function getWeightHistory(days) {
+        if (!currentUser) {
+            console.log('❌ No current user for weight history');
+            return [];
+        }
+        
+        try {
+            console.log(`📊 Fetching weight history for last ${days} days`);
+            const endDate = new Date();
+            const startDate = new Date();
+            startDate.setDate(startDate.getDate() - days);
+            
+            // Use the correct collection path for subcollection
+            const userDocRef = window.firebaseDb.doc(window.firebaseDb.db, 'users', currentUser.uid);
+            const historyCollectionRef = window.firebaseDb.collection(userDocRef, 'bodyHistory');
+            
+            console.log('🔍 Querying bodyHistory collection...');
+            console.log('🔍 Collection path: users/' + currentUser.uid + '/bodyHistory');
+            const querySnapshot = await window.firebaseDb.getDocs(historyCollectionRef);
+            console.log('🔍 Query snapshot size:', querySnapshot.size);
+            const weightEntries = [];
+            
+            querySnapshot.forEach((doc) => {
+                const data = doc.data();
+                console.log('📄 Document ID:', doc.id, 'Data:', data);
+                
+                if (data.weight && data.timestamp) {
+                    console.log('✅ Found weight entry:', data.weight, 'on', data.timestamp);
+                    // Handle both Firestore timestamp and regular Date
+                    let date;
+                    if (data.timestamp.toDate) {
+                        date = data.timestamp.toDate();
+                    } else if (data.timestamp instanceof Date) {
+                        date = data.timestamp;
+                    } else {
+                        date = new Date(data.timestamp);
+                    }
+                    
+                    if (date >= startDate && date <= endDate) {
+                        weightEntries.push({
+                            date: date,
+                            weight: data.weight,
+                            docId: doc.id
+                        });
+                    }
+                }
+            });
+            
+            console.log(`📈 Found ${weightEntries.length} weight entries`);
+            
+            // Sort by date
+            weightEntries.sort((a, b) => a.date - b.date);
+            return weightEntries;
+            
+        } catch (error) {
+            console.error('❌ Error fetching weight history:', error);
+            console.error('Error details:', error.code, error.message);
+            return [];
+        }
+    }
+
+    function renderWeightChart(data) {
+        console.log('🎨 Rendering weight chart with data:', data);
+        const canvas = document.getElementById('weight-trajectory-chart');
+        console.log('🎨 Canvas element found:', !!canvas);
+        
+        if (!canvas) {
+            console.error('❌ Canvas element not found');
+            return;
+        }
+        
+        console.log('🎨 Canvas dimensions:', canvas.width, 'x', canvas.height);
+        console.log('🎨 Canvas visible:', canvas.offsetWidth, 'x', canvas.offsetHeight);
+        
+        if (data.length === 0) {
+            console.log('📊 No data to render');
+            return;
+        }
+        
+        const ctx = canvas.getContext('2d');
+        
+        // Clear canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Test drawing - draw a simple rectangle to verify canvas is working
+        ctx.fillStyle = '#3b82f6';
+        ctx.fillRect(10, 10, 50, 50);
+        console.log('🎨 Test rectangle drawn');
+        
+        if (data.length === 0) {
+            ctx.fillStyle = '#64748b';
+            ctx.font = '16px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('No weight data available', canvas.width / 2, canvas.height / 2);
+            return;
+        }
+        
+        // Chart dimensions
+        const padding = 60;
+        const chartWidth = canvas.width - 2 * padding;
+        const chartHeight = canvas.height - 2 * padding;
+        
+        // Find min and max values
+        const weights = data.map(d => d.weight);
+        const minWeight = Math.min(...weights) - 1;
+        const maxWeight = Math.max(...weights) + 1;
+        const weightRange = maxWeight - minWeight;
+        
+        // Draw axes
+        ctx.strokeStyle = '#e2e8f0';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(padding, padding);
+        ctx.lineTo(padding, padding + chartHeight);
+        ctx.lineTo(padding + chartWidth, padding + chartHeight);
+        ctx.stroke();
+        
+        // Draw grid lines
+        ctx.strokeStyle = '#f1f5f9';
+        ctx.lineWidth = 1;
+        for (let i = 1; i < 5; i++) {
+            const y = padding + (chartHeight * i) / 5;
+            ctx.beginPath();
+            ctx.moveTo(padding, y);
+            ctx.lineTo(padding + chartWidth, y);
+            ctx.stroke();
+        }
+        
+        // Draw weight line
+        if (data.length > 1) {
+            ctx.strokeStyle = '#3b82f6';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            
+            data.forEach((point, index) => {
+                const x = padding + (chartWidth * index) / (data.length - 1);
+                const y = padding + chartHeight - ((point.weight - minWeight) / weightRange) * chartHeight;
+                
+                if (index === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            });
+            
+            ctx.stroke();
+        }
+        
+        // Draw data points
+        ctx.fillStyle = '#3b82f6';
+        data.forEach((point, index) => {
+            const x = padding + (chartWidth * index) / Math.max(data.length - 1, 1);
+            const y = padding + chartHeight - ((point.weight - minWeight) / weightRange) * chartHeight;
+            
+            ctx.beginPath();
+            ctx.arc(x, y, 4, 0, 2 * Math.PI);
+            ctx.fill();
+        });
+        
+        // Draw labels
+        ctx.fillStyle = '#64748b';
+        ctx.font = '12px sans-serif';
+        ctx.textAlign = 'center';
+        
+        // Date labels (show first, middle, last)
+        if (data.length > 0) {
+            const firstDate = data[0].date.toLocaleDateString();
+            const lastDate = data[data.length - 1].date.toLocaleDateString();
+            
+            ctx.fillText(firstDate, padding, canvas.height - 20);
+            ctx.fillText(lastDate, padding + chartWidth, canvas.height - 20);
+        }
+        
+        // Weight labels
+        ctx.textAlign = 'right';
+        ctx.fillText(maxWeight.toFixed(1) + ' kg', padding - 10, padding + 5);
+        ctx.fillText(minWeight.toFixed(1) + ' kg', padding - 10, padding + chartHeight + 5);
+    }
+
+    function updateWeightStats(data) {
+        if (data.length === 0) {
+            document.getElementById('weight-change').textContent = '--';
+            document.getElementById('weight-trend').textContent = '--';
+            document.getElementById('avg-weekly-change').textContent = '--';
+            document.getElementById('entries-count').textContent = '0';
+            return;
+        }
+        
+        const firstWeight = data[0].weight;
+        const lastWeight = data[data.length - 1].weight;
+        const totalChange = lastWeight - firstWeight;
+        
+        // Update total change
+        const changeElement = document.getElementById('weight-change');
+        changeElement.textContent = (totalChange >= 0 ? '+' : '') + totalChange.toFixed(1) + ' kg';
+        changeElement.className = 'stat-value ' + (totalChange > 0 ? 'positive' : totalChange < 0 ? 'negative' : 'stable');
+        
+        // Update trend
+        const trendElement = document.getElementById('weight-trend');
+        if (Math.abs(totalChange) < 0.5) {
+            trendElement.textContent = 'Stable';
+            trendElement.className = 'stat-value stable';
+        } else if (totalChange > 0) {
+            trendElement.textContent = 'Increasing';
+            trendElement.className = 'stat-value positive';
+        } else {
+            trendElement.textContent = 'Decreasing';
+            trendElement.className = 'stat-value negative';
+        }
+        
+        // Calculate average weekly change
+        const days = (data[data.length - 1].date - data[0].date) / (1000 * 60 * 60 * 24);
+        const weeks = days / 7;
+        const avgWeeklyChange = weeks > 0 ? totalChange / weeks : 0;
+        
+        const weeklyElement = document.getElementById('avg-weekly-change');
+        weeklyElement.textContent = (avgWeeklyChange >= 0 ? '+' : '') + avgWeeklyChange.toFixed(2) + ' kg/wk';
+        weeklyElement.className = 'stat-value ' + (avgWeeklyChange > 0 ? 'positive' : avgWeeklyChange < 0 ? 'negative' : 'stable');
+        
+        // Update entries count
+        document.getElementById('entries-count').textContent = data.length.toString();
+    }
+
+    // Initialize sample weight data for testing
+    async function createSampleWeightData() {
+        if (!currentUser) return;
+        
+        try {
+            console.log('🔧 Creating sample weight data...');
+            
+            const today = new Date();
+            const sampleEntries = [
+                { daysAgo: 30, weight: 72.5 },
+                { daysAgo: 25, weight: 72.8 },
+                { daysAgo: 20, weight: 73.1 },
+                { daysAgo: 15, weight: 73.0 },
+                { daysAgo: 10, weight: 72.7 },
+                { daysAgo: 5, weight: 72.3 },
+                { daysAgo: 0, weight: 72.0 }
+            ];
+            
+            for (const entry of sampleEntries) {
+                const date = new Date();
+                date.setDate(today.getDate() - entry.daysAgo);
+                
+                const dateKey = date.toISOString().split('T')[0];
+                const historyDocRef = window.firebaseDb.doc(window.firebaseDb.db, 'users', currentUser.uid, 'bodyHistory', dateKey);
+                
+                await window.firebaseDb.setDoc(historyDocRef, {
+                    weight: entry.weight,
+                    timestamp: date,
+                    date: dateKey
+                }, { merge: true });
+            }
+            
+            console.log('✅ Sample weight data created');
+            showNotification('Sample data created! Check the History tab.');
+            
+        } catch (error) {
+            console.error('❌ Error creating sample data:', error);
+        }
+    }
+
+    // Expose function for testing
+    window.createSampleWeightData = createSampleWeightData;
+
     function handleUpdateGoals() {
         const goalWeight = document.getElementById('goal-weight')?.value;
         const activityLevel = document.getElementById('activity-level')?.value;
@@ -5526,16 +6208,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function showNotification(message) {
+    function showNotification(message, type = 'success') {
         // Create notification element
         const notification = document.createElement('div');
         notification.className = 'notification';
         notification.textContent = message;
+        
+        const backgroundColor = type === 'error' ? '#ef4444' : 'var(--primary-color)';
+        
         notification.style.cssText = `
             position: fixed;
             top: 20px;
             right: 20px;
-            background: var(--primary-color);
+            background: ${backgroundColor};
             color: white;
             padding: 12px 20px;
             border-radius: 8px;
@@ -5563,5 +6248,564 @@ document.addEventListener('DOMContentLoaded', () => {
             }, 300);
         }, 3000);
     }
-});
 
+    // ===== GOALS & TARGETS FUNCTIONALITY =====
+    
+    let goalData = {
+        goalType: null,
+        activityLevel: null,
+        timeframe: null,
+        currentWeight: null,
+        targetWeight: null,
+        age: null,
+        gender: null,
+        height: null
+    };
+
+    function initializeGoalsSystem() {
+        console.log('🎯 Initializing Goals & Targets system...');
+        
+        // Add event listeners for goal options
+        const goalOptions = document.querySelectorAll('.goal-option');
+        goalOptions.forEach(option => {
+            option.addEventListener('click', () => selectGoalType(option));
+        });
+        
+        // Add event listeners for activity options
+        const activityOptions = document.querySelectorAll('.activity-option');
+        activityOptions.forEach(option => {
+            option.addEventListener('click', () => selectActivityLevel(option));
+        });
+        
+        // Add event listener for calculate button
+        const calculateBtn = document.getElementById('calculate-goals');
+        if (calculateBtn) {
+            calculateBtn.addEventListener('click', calculateGoals);
+        }
+        
+        // Add event listener for edit goals button
+        const editBtn = document.getElementById('edit-goals');
+        if (editBtn) {
+            editBtn.addEventListener('click', editGoals);
+        }
+        
+        // Check if user already has goals set
+        loadExistingGoals();
+    }
+
+    function selectGoalType(selectedOption) {
+        // Remove selection from all options
+        document.querySelectorAll('.goal-option').forEach(option => {
+            option.classList.remove('selected');
+        });
+        
+        // Add selection to clicked option
+        selectedOption.classList.add('selected');
+        goalData.goalType = selectedOption.dataset.goal;
+        
+        console.log('Selected goal type:', goalData.goalType);
+    }
+
+    function selectActivityLevel(selectedOption) {
+        // Remove selection from all options
+        document.querySelectorAll('.activity-option').forEach(option => {
+            option.classList.remove('selected');
+        });
+        
+        // Add selection to clicked option
+        selectedOption.classList.add('selected');
+        goalData.activityLevel = selectedOption.dataset.activity;
+        
+        console.log('Selected activity level:', goalData.activityLevel);
+    }
+
+    async function calculateGoals() {
+        console.log('🧮 Calculating personalized goals...');
+        
+        // Validate input
+        if (!validateGoalInputs()) return;
+        
+        try {
+            // Get user data
+            await getUserDataForGoals();
+            
+            // Calculate BMR and daily calories
+            const bmr = calculateBMR();
+            const dailyCalories = calculateDailyCalories(bmr);
+            const targetCalories = calculateTargetCalories(dailyCalories);
+            
+            // Calculate macros
+            const macros = calculateMacros(targetCalories);
+            
+            // Calculate meal distribution
+            const meals = distributeMealCalories(targetCalories);
+            
+            // Calculate timeline
+            const timeline = calculateTimeline();
+            
+            // Save goals to Firebase
+            await saveGoalsToFirestore({
+                goalType: goalData.goalType,
+                activityLevel: goalData.activityLevel,
+                timeframe: goalData.timeframe,
+                currentWeight: goalData.currentWeight,
+                targetWeight: goalData.targetWeight,
+                dailyCalories: targetCalories,
+                macros: macros,
+                meals: meals,
+                timeline: timeline,
+                createdAt: new Date().toISOString()
+            });
+            
+            // Display results
+            displayGoalResults(targetCalories, macros, meals, timeline);
+            
+            // Update dashboard with new targets
+            updateDashboardTargets(targetCalories, macros);
+            
+            showNotification('Your personalized goals have been calculated!', 'success');
+            
+        } catch (error) {
+            console.error('Error calculating goals:', error);
+            showNotification('Error calculating goals. Please try again.', 'error');
+        }
+    }
+
+    function validateGoalInputs() {
+        if (!goalData.goalType) {
+            showNotification('Please select your weight goal', 'error');
+            return false;
+        }
+        
+        if (!goalData.activityLevel) {
+            showNotification('Please select your activity level', 'error');
+            return false;
+        }
+        
+        const targetWeightInput = document.getElementById('target-weight');
+        const targetWeight = parseFloat(targetWeightInput.value);
+        
+        if (!targetWeight || targetWeight < 30 || targetWeight > 200) {
+            showNotification('Please enter a valid target weight between 30-200 kg', 'error');
+            return false;
+        }
+        
+        const timeframeInput = document.getElementById('target-weeks');
+        const timeframe = parseInt(timeframeInput.value);
+        
+        if (!timeframe || timeframe < 4 || timeframe > 52) {
+            showNotification('Please enter a timeframe between 4-52 weeks', 'error');
+            return false;
+        }
+        
+        goalData.targetWeight = targetWeight;
+        goalData.timeframe = timeframe;
+        return true;
+    }
+
+    async function getUserDataForGoals() {
+        console.log('📊 Getting user data for goal calculation...');
+        
+        try {
+            // Get current body metrics from Firebase
+            const bodyMetrics = await getCurrentBodyMetrics();
+            goalData.currentWeight = parseFloat(bodyMetrics.weight) || 70;
+            goalData.height = parseFloat(bodyMetrics.height) || 175;
+            console.log('📊 Got body metrics:', { weight: goalData.currentWeight, height: goalData.height });
+        } catch (error) {
+            console.log('Body metrics not found, using defaults');
+            goalData.currentWeight = 70;
+            goalData.height = 175;
+        }
+        
+        try {
+            // Get user profile data (age, gender)
+            const profile = await getUserProfile();
+            goalData.age = parseInt(profile.age) || 25;
+            goalData.gender = profile.gender || 'male';
+            console.log('📊 Got profile data:', { age: goalData.age, gender: goalData.gender });
+        } catch (error) {
+            console.log('Profile not found, using defaults');
+            goalData.age = 25;
+            goalData.gender = 'male';
+        }
+        
+        // Target weight is already set from user input in validateGoalInputs()
+        console.log('📊 Final goal data for calculation:', goalData);
+    }
+
+    function calculateBMR() {
+        // Mifflin-St Jeor Equation
+        console.log('📊 BMR Calculation inputs:', {
+            weight: goalData.currentWeight,
+            height: goalData.height,
+            age: goalData.age,
+            gender: goalData.gender
+        });
+        
+        // Ensure all values are numbers
+        const weight = parseFloat(goalData.currentWeight) || 70;
+        const height = parseFloat(goalData.height) || 175;
+        const age = parseInt(goalData.age) || 25;
+        
+        let bmr;
+        if (goalData.gender === 'male') {
+            bmr = 88.362 + (13.397 * weight) + (4.799 * height) - (5.677 * age);
+        } else {
+            bmr = 447.593 + (9.247 * weight) + (3.098 * height) - (4.330 * age);
+        }
+        
+        console.log('Calculated BMR:', bmr);
+        return bmr;
+    }
+
+    function calculateDailyCalories(bmr) {
+        // Activity multipliers
+        const multipliers = {
+            sedentary: 1.2,
+            light: 1.375,
+            moderate: 1.55,
+            active: 1.725,
+            very_active: 1.9
+        };
+        
+        // Ensure activityLevel is set with a default
+        const activityLevel = goalData.activityLevel || 'moderate';
+        
+        const dailyCalories = bmr * multipliers[activityLevel];
+        console.log('Daily maintenance calories:', dailyCalories, 'Activity level:', activityLevel);
+        return dailyCalories;
+    }
+
+    function calculateTargetCalories(dailyCalories) {
+        // Calculate weight difference
+        const weightDifference = goalData.targetWeight - goalData.currentWeight;
+        const timeframeInWeeks = goalData.timeframe;
+        
+        // 1 kg = approximately 7700 calories
+        const caloriesPerKg = 7700;
+        const totalCalorieChange = weightDifference * caloriesPerKg;
+        const dailyCalorieChange = totalCalorieChange / (timeframeInWeeks * 7); // per day
+        
+        let targetCalories = dailyCalories;
+        
+        if (goalData.goalType === 'lose') {
+            // Negative calorie change (deficit)
+            targetCalories = dailyCalories + dailyCalorieChange; // dailyCalorieChange is negative for weight loss
+        } else if (goalData.goalType === 'gain') {
+            // Positive calorie change (surplus)
+            targetCalories = dailyCalories + dailyCalorieChange; // dailyCalorieChange is positive for weight gain
+        } else {
+            // Maintain current weight
+            targetCalories = dailyCalories;
+        }
+        
+        // Ensure we don't go below 1200 calories (minimum safe level)
+        targetCalories = Math.max(targetCalories, 1200);
+        
+        console.log(`Weight change: ${weightDifference.toFixed(1)} kg over ${timeframeInWeeks} weeks`);
+        console.log(`Daily calorie adjustment: ${dailyCalorieChange.toFixed(0)} kcal`);
+        console.log('Target daily calories:', targetCalories);
+        
+        return Math.round(targetCalories);
+    }
+
+    function calculateMacros(targetCalories) {
+        // Standard macro distribution
+        const proteinPercent = 0.25; // 25% protein
+        const fatPercent = 0.30; // 30% fat
+        const carbPercent = 0.45; // 45% carbs
+        
+        const macros = {
+            protein: Math.round((targetCalories * proteinPercent) / 4), // 4 cal per gram
+            fat: Math.round((targetCalories * fatPercent) / 9), // 9 cal per gram
+            carbs: Math.round((targetCalories * carbPercent) / 4) // 4 cal per gram
+        };
+        
+        console.log('Calculated macros:', macros);
+        return macros;
+    }
+
+    function distributeMealCalories(targetCalories) {
+        // Standard meal distribution
+        const meals = {
+            breakfast: Math.round(targetCalories * 0.20), // 20%
+            lunch: Math.round(targetCalories * 0.30), // 30%
+            dinner: Math.round(targetCalories * 0.35), // 35%
+            snacks: Math.round(targetCalories * 0.15) // 15%
+        };
+        
+        console.log('Meal distribution:', meals);
+        return meals;
+    }
+
+    function calculateTimeline() {
+        const weightDifference = goalData.targetWeight - goalData.currentWeight; // Keep sign for direction
+        const actualWeeklyChange = weightDifference / goalData.timeframe; // Based on user's desired timeframe
+        
+        // Calculate weekly calorie deficit/surplus needed
+        const caloriesPerKg = 7700;
+        const weeklyCalorieChange = actualWeeklyChange * caloriesPerKg;
+        
+        const timeline = {
+            currentWeight: goalData.currentWeight,
+            targetWeight: goalData.targetWeight,
+            weightDifference: Math.abs(weightDifference),
+            weeklyChange: Math.abs(actualWeeklyChange),
+            estimatedWeeks: goalData.timeframe,
+            weeklyDeficit: Math.abs(weeklyCalorieChange)
+        };
+        
+        console.log('Timeline calculation:', timeline);
+        return timeline;
+    }
+
+    async function saveGoalsToFirestore(goals) {
+        try {
+            if (window.currentUserId && window.firebaseDb) {
+                const goalsRef = window.firebaseDb.doc(window.firebaseDb.db, 'users', window.currentUserId, 'goals', 'current');
+                await window.firebaseDb.setDoc(goalsRef, goals);
+                console.log('✅ Goals saved to Firestore');
+            } else {
+                console.log('⚠️ Firebase not available, goals not saved');
+            }
+        } catch (error) {
+            console.error('❌ Error saving goals:', error);
+            // Don't throw error, just log it so calculation can continue
+        }
+    }
+
+    function displayGoalResults(targetCalories, macros, meals, timeline) {
+        // Hide setup form and show results
+        document.getElementById('goal-setup-form').style.display = 'none';
+        document.getElementById('goals-results').style.display = 'block';
+        
+        // Ensure values are valid numbers
+        const validCalories = !isNaN(targetCalories) && isFinite(targetCalories) ? Math.round(targetCalories) : 0;
+        const validProtein = !isNaN(macros.protein) && isFinite(macros.protein) ? Math.round(macros.protein) : 0;
+        const validCarbs = !isNaN(macros.carbs) && isFinite(macros.carbs) ? Math.round(macros.carbs) : 0;
+        const validFat = !isNaN(macros.fat) && isFinite(macros.fat) ? Math.round(macros.fat) : 0;
+        
+        // Update calorie target
+        document.getElementById('daily-calories-target').textContent = validCalories;
+        document.getElementById('protein-target').textContent = validProtein + 'g';
+        document.getElementById('carbs-target').textContent = validCarbs + 'g';
+        document.getElementById('fat-target').textContent = validFat + 'g';
+        
+        // Update meal distribution
+        document.getElementById('breakfast-calories').textContent = Math.round(meals.breakfast || 0) + ' kcal';
+        document.getElementById('lunch-calories').textContent = Math.round(meals.lunch || 0) + ' kcal';
+        document.getElementById('dinner-calories').textContent = Math.round(meals.dinner || 0) + ' kcal';
+        document.getElementById('snacks-calories').textContent = Math.round(meals.snacks || 0) + ' kcal';
+        
+        // Update timeline
+        const currentWt = parseFloat(timeline.currentWeight);
+        const targetWt = parseFloat(timeline.targetWeight);
+        document.getElementById('timeline-current-weight').textContent = (!isNaN(currentWt) ? currentWt.toFixed(1) : '0.0') + ' kg';
+        document.getElementById('timeline-target-weight').textContent = (!isNaN(targetWt) ? targetWt.toFixed(1) : '0.0') + ' kg';
+        document.getElementById('weekly-deficit').textContent = Math.round(Math.abs(timeline.weeklyDeficit || 0)) + ' kcal';
+        document.getElementById('weekly-loss').textContent = (timeline.weeklyChange || 0).toFixed(2) + ' kg';
+        
+        // Render weight prediction chart
+        renderWeightPredictionChart(timeline);
+    }
+
+    function renderWeightPredictionChart(timeline) {
+        const canvas = document.getElementById('weight-prediction-chart');
+        if (!canvas) return;
+        
+        const ctx = canvas.getContext('2d');
+        const width = canvas.width;
+        const height = canvas.height;
+        
+        // Clear canvas
+        ctx.clearRect(0, 0, width, height);
+        
+        // Generate prediction data
+        const weeks = goalData.timeframe;
+        const startWeight = timeline.currentWeight;
+        const targetWeight = timeline.targetWeight;
+        const weeklyChange = (targetWeight - startWeight) / weeks;
+        
+        const dataPoints = [];
+        for (let week = 0; week <= weeks; week++) {
+            dataPoints.push({
+                week: week,
+                weight: startWeight + (weeklyChange * week)
+            });
+        }
+        
+        // Chart dimensions
+        const padding = 40;
+        const chartWidth = width - (padding * 2);
+        const chartHeight = height - (padding * 2);
+        
+        // Calculate scales
+        const maxWeight = Math.max(startWeight, targetWeight) + 2;
+        const minWeight = Math.min(startWeight, targetWeight) - 2;
+        const weightRange = maxWeight - minWeight;
+        
+        // Draw axes
+        ctx.strokeStyle = '#e5e7eb';
+        ctx.lineWidth = 1;
+        
+        // Y-axis
+        ctx.beginPath();
+        ctx.moveTo(padding, padding);
+        ctx.lineTo(padding, height - padding);
+        ctx.stroke();
+        
+        // X-axis
+        ctx.beginPath();
+        ctx.moveTo(padding, height - padding);
+        ctx.lineTo(width - padding, height - padding);
+        ctx.stroke();
+        
+        // Draw weight line
+        ctx.strokeStyle = '#3b82f6';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        
+        dataPoints.forEach((point, index) => {
+            const x = padding + (point.week / weeks) * chartWidth;
+            const y = height - padding - ((point.weight - minWeight) / weightRange) * chartHeight;
+            
+            if (index === 0) {
+                ctx.moveTo(x, y);
+            } else {
+                ctx.lineTo(x, y);
+            }
+        });
+        
+        ctx.stroke();
+        
+        // Draw start and end points
+        ctx.fillStyle = '#3b82f6';
+        const startY = height - padding - ((startWeight - minWeight) / weightRange) * chartHeight;
+        const endY = height - padding - ((targetWeight - minWeight) / weightRange) * chartHeight;
+        
+        ctx.beginPath();
+        ctx.arc(padding, startY, 6, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        ctx.beginPath();
+        ctx.arc(width - padding, endY, 6, 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // Labels
+        ctx.fillStyle = '#374151';
+        ctx.font = '12px Arial';
+        ctx.textAlign = 'center';
+        
+        // Week labels
+        ctx.fillText('0', padding, height - 20);
+        ctx.fillText(weeks.toString(), width - padding, height - 20);
+        
+        // Weight labels
+        ctx.textAlign = 'right';
+        ctx.fillText(startWeight.toFixed(1) + ' kg', padding - 10, startY + 4);
+        ctx.fillText(targetWeight.toFixed(1) + ' kg', padding - 10, endY + 4);
+    }
+
+    function editGoals() {
+        // Show setup form and hide results
+        document.getElementById('goal-setup-form').style.display = 'block';
+        document.getElementById('goals-results').style.display = 'none';
+        
+        // Reset selections
+        document.querySelectorAll('.goal-option').forEach(option => {
+            option.classList.remove('selected');
+        });
+        document.querySelectorAll('.activity-option').forEach(option => {
+            option.classList.remove('selected');
+        });
+        
+        // Clear timeframe input
+        document.getElementById('target-weeks').value = '';
+        
+        // Reset goal data
+        goalData = {
+            goalType: null,
+            activityLevel: null,
+            timeframe: null,
+            currentWeight: null,
+            targetWeight: null,
+            age: null,
+            gender: null,
+            height: null
+        };
+    }
+
+    async function loadExistingGoals() {
+        try {
+            if (window.currentUserId && window.firebaseDb) {
+                const goalsRef = window.firebaseDb.doc(window.firebaseDb.db, 'users', window.currentUserId, 'goals', 'current');
+                const goalsDoc = await window.firebaseDb.getDoc(goalsRef);
+                
+                if (goalsDoc.exists()) {
+                    const goals = goalsDoc.data();
+                    console.log('📊 Loaded existing goals:', goals);
+                    
+                    // Display the results directly
+                    displayGoalResults(goals.dailyCalories, goals.macros, goals.meals, goals.timeline);
+                    updateDashboardTargets(goals.dailyCalories, goals.macros);
+                } else {
+                    console.log('📊 No existing goals found, showing setup form');
+                }
+            } else {
+                console.log('📊 Firebase not available, showing setup form');
+            }
+        } catch (error) {
+            console.error('❌ Error loading existing goals:', error);
+        }
+    }
+
+    function updateDashboardTargets(dailyCalories, macros) {
+        // Update dashboard targets if elements exist
+        const calorieTargetEl = document.getElementById('calorie-target');
+        const proteinTargetEl = document.getElementById('protein-target-dash');
+        
+        if (calorieTargetEl) {
+            calorieTargetEl.textContent = dailyCalories;
+        }
+        
+        if (proteinTargetEl) {
+            proteinTargetEl.textContent = macros.protein;
+        }
+        
+        console.log('📊 Updated dashboard targets');
+    }
+
+    // Initialize goals system when the page loads
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeGoalsSystem);
+    } else {
+        initializeGoalsSystem();
+    }
+
+    // Debug function to check page functionality
+    function debugPageFunctionality() {
+        console.log('🔍 Debug: Checking page functionality...');
+        
+        // Check if all tab content areas exist
+        const contentAreas = ['dashboard-content', 'analytics-content', 'body-metrics-content', 'goals-content', 'ai-insights-content', 'history-content', 'profile-content'];
+        contentAreas.forEach(id => {
+            const element = document.getElementById(id);
+            console.log(`🔍 ${id}: ${element ? '✅ Found' : '❌ Missing'}`);
+        });
+        
+        // Check if sidebar items exist
+        const sidebarItems = ['sidebar-dashboard', 'sidebar-analytics', 'sidebar-body-metrics', 'sidebar-goals', 'sidebar-ai-insights', 'sidebar-history', 'sidebar-profile'];
+        sidebarItems.forEach(id => {
+            const element = document.getElementById(id);
+            console.log(`🔍 ${id}: ${element ? '✅ Found' : '❌ Missing'}`);
+        });
+        
+        console.log('🔍 Debug check completed');
+    }
+
+    // Run debug check after initialization
+    window.addEventListener('load', () => {
+        setTimeout(debugPageFunctionality, 1000);
+    });
+});

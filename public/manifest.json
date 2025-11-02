@@ -1,0 +1,17 @@
+{
+  "name": "Lean Project",
+  "short_name": "Lean",
+  "version": "1.0.0",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#4F46E5",
+  "start_url": "/",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
