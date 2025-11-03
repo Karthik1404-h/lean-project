@@ -84,9 +84,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const sidebar = document.querySelector('.sidebar');
     const sidebarDashboard = document.getElementById('sidebar-dashboard');
     const sidebarAnalytics = document.getElementById('sidebar-analytics');
+    const sidebarInsights = document.getElementById('sidebar-insights');
     const sidebarBodyMetrics = document.getElementById('sidebar-body-metrics');
     const sidebarGoals = document.getElementById('sidebar-goals');
-    const sidebarAiInsights = document.getElementById('sidebar-ai-insights');
     const sidebarHistory = document.getElementById('sidebar-history');
     const sidebarProfile = document.getElementById('sidebar-profile');
     const sidebarSignout = document.getElementById('sidebar-signout');
@@ -101,9 +101,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Content Areas
     const dashboardContent = document.getElementById('dashboard-content');
     const analyticsContent = document.getElementById('analytics-content');
+    const insightsContent = document.getElementById('insights-content');
     const bodyMetricsContent = document.getElementById('body-metrics-content');
     const goalsContent = document.getElementById('goals-content');
-    const aiInsightsContent = document.getElementById('ai-insights-content');
     const historyContent = document.getElementById('history-content');
     const profileContent = document.getElementById('profile-content');
 
@@ -234,6 +234,12 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
         
+        if (sidebarInsights) {
+            sidebarInsights.addEventListener('click', () => {
+                switchSidebarTab('insights');
+            });
+        }
+        
         if (sidebarBodyMetrics) {
             sidebarBodyMetrics.addEventListener('click', () => {
                 switchSidebarTab('body-metrics');
@@ -243,12 +249,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (sidebarGoals) {
             sidebarGoals.addEventListener('click', () => {
                 switchSidebarTab('goals');
-            });
-        }
-        
-        if (sidebarAiInsights) {
-            sidebarAiInsights.addEventListener('click', () => {
-                switchSidebarTab('ai-insights');
             });
         }
         
@@ -377,12 +377,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const logActivityBtn = document.querySelector('.log-activity-btn');
     if (logActivityBtn) {
         logActivityBtn.addEventListener('click', handleLogActivity);
-    }
-
-    // AI Insights event listeners
-    const refreshInsightsBtn = document.querySelector('.refresh-insights-btn');
-    if (refreshInsightsBtn) {
-        refreshInsightsBtn.addEventListener('click', handleRefreshInsights);
     }
 }
 
@@ -549,12 +543,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // Hide all content areas
         if (dashboardContent) dashboardContent.style.display = 'none';
         if (analyticsContent) analyticsContent.style.display = 'none';
+        if (insightsContent) insightsContent.style.display = 'none';
         if (bodyMetricsContent) bodyMetricsContent.style.display = 'none';
         if (goalsContent) goalsContent.style.display = 'none';
-        if (aiInsightsContent) {
-            aiInsightsContent.style.display = 'none';
-            aiInsightsContent.classList.remove('active');
-        }
         if (historyContent) historyContent.style.display = 'none';
         if (profileContent) profileContent.style.display = 'none';
         
@@ -575,6 +566,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (sidebarAnalytics) sidebarAnalytics.classList.add('active');
                 if (pageTitle) pageTitle.textContent = 'Analytics';
                 break;
+            case 'insights':
+                if (insightsContent) {
+                    insightsContent.style.display = 'block';
+                    if (currentUser) {
+                        initializeInsights();
+                    }
+                }
+                if (sidebarInsights) sidebarInsights.classList.add('active');
+                if (pageTitle) pageTitle.textContent = 'Insights';
+                break;
             case 'body-metrics':
                 if (bodyMetricsContent) {
                     bodyMetricsContent.style.display = 'block';
@@ -590,15 +591,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 if (sidebarGoals) sidebarGoals.classList.add('active');
                 if (pageTitle) pageTitle.textContent = 'Goals & Targets';
-                break;
-            case 'ai-insights':
-                if (aiInsightsContent) {
-                    aiInsightsContent.style.display = 'block';
-                    aiInsightsContent.classList.add('active');
-                    initializeAIInsights();
-                }
-                if (sidebarAiInsights) sidebarAiInsights.classList.add('active');
-                if (pageTitle) pageTitle.textContent = 'AI Insights';
                 break;
             case 'history':
                 if (historyContent) {
@@ -4465,13 +4457,6 @@ document.addEventListener('DOMContentLoaded', () => {
         
         console.log(`🔍 Calculating data for ${year}-${month + 1} (${month})`);
         
-        // Only allow data for valid months (August-November 2025)
-        const validMonths = [7, 8, 9, 10]; // August=7, September=8, October=9, November=10
-        if (year !== 2025 || !validMonths.includes(month)) {
-            console.log(`❌ Month ${month + 1}/${year} is not in valid range - returning 0`);
-            return { daysLogged: 0, avgCalories: 0 };
-        }
-        
         // Get all days in the month
         const daysInMonth = new Date(year, month + 1, 0).getDate();
         console.log(`📅 Days in month: ${daysInMonth}`);
@@ -4487,31 +4472,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 date.toLocaleDateString('en-GB'),
                 `${month + 1}/${day}/${year}`,
                 `${day}/${month + 1}/${year}`,
-                `${month + 1}/${day}/${year % 100}`,
-                date.toISOString().split('T')[0]
+                `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
             ];
             
-            let foundData = null;
+            let dayData = null;
             for (const format of alternateFormats) {
-                if (history[format] && history[format].totals && history[format].totals.calories > 0) {
-                    foundData = history[format];
+                if (history[format]) {
+                    dayData = history[format];
                     break;
                 }
             }
             
-            if (foundData) {
+            if (dayData && dayData.totals && dayData.totals.calories > 0) {
                 daysLogged++;
-                totalCalories += foundData.totals?.calories || 0;
-                
-                if (daysLogged <= 3) { // Log first few matches for debugging
-                    console.log(`✅ Found data for ${dateStr}: ${foundData.totals?.calories || 0} calories`);
-                }
+                totalCalories += dayData.totals.calories;
+                console.log(`✅ Found data for ${dateStr}: ${dayData.totals.calories} calories`);
             }
         }
         
         const avgCalories = daysLogged > 0 ? Math.round(totalCalories / daysLogged) : 0;
         
-        console.log(`📊 Month ${month + 1} result: ${daysLogged} days, ${avgCalories} avg calories`);
+        console.log(`📊 Month ${month + 1}/${year} result: ${daysLogged} days, ${avgCalories} avg calories`);
         return { daysLogged, avgCalories };
     }
 
@@ -4730,8 +4711,644 @@ document.addEventListener('DOMContentLoaded', () => {
         await generateAnalytics();
     }
 
-    // Make sample data function available globally for testing
+    // Function to clear all sample/unwanted data
+    async function clearSampleData() {
+        if (!currentUser) {
+            console.log('❌ No user logged in, cannot clear sample data');
+            return;
+        }
+
+        try {
+            console.log('🧹 Clearing sample/unwanted data...');
+            
+            // Get all possible dates for the last year
+            const today = new Date();
+            const promises = [];
+            
+            for (let i = 0; i < 365; i++) {
+                const date = new Date(today);
+                date.setDate(today.getDate() - i);
+                const dateStr = date.toLocaleDateString();
+                
+                // Check if document exists and has sample data characteristics
+                const dailyDocRef = window.firebaseDb.doc(window.firebaseDb.db, 'users', currentUser.uid, 'dailyData', dateStr);
+                promises.push(
+                    window.firebaseDb.getDoc(dailyDocRef).then(async doc => {
+                        if (doc.exists()) {
+                            const data = doc.data();
+                            // Check if this looks like sample data (has "Sample" in meal names)
+                            const hasBreakfast = data.meals?.breakfast?.length > 0;
+                            const hasLunch = data.meals?.lunch?.length > 0;
+                            const hasDinner = data.meals?.dinner?.length > 0;
+                            
+                            let isSampleData = false;
+                            
+                            // Check for sample meal names
+                            const allMeals = [
+                                ...(data.meals?.breakfast || []),
+                                ...(data.meals?.lunch || []),
+                                ...(data.meals?.dinner || []),
+                                ...(data.meals?.snacks || [])
+                            ];
+                            
+                            const hasSampleMeals = allMeals.some(meal => 
+                                meal.name && meal.name.toLowerCase().includes('sample')
+                            );
+                            
+                            // Also check if it's very old data that might be unwanted
+                            const isOldData = new Date(dateStr) < new Date('2025-11-01'); // Before current month
+                            
+                            if (hasSampleMeals) {
+                                console.log(`🗑️ Deleting sample data for ${dateStr}`);
+                                await window.firebaseDb.deleteDoc(dailyDocRef);
+                            }
+                        }
+                    }).catch(error => {
+                        console.error(`Error checking/deleting data for ${dateStr}:`, error);
+                    })
+                );
+            }
+            
+            await Promise.all(promises);
+            console.log('✅ Sample data cleanup completed!');
+            
+            // Refresh the history display
+            await generateAnalytics();
+            if (window.currentSection === 'history') {
+                await initializeHistory();
+            }
+            
+        } catch (error) {
+            console.error('❌ Error clearing sample data:', error);
+        }
+    }
+
+    // Make functions available globally for testing
     window.addSampleData = addSampleData;
+    window.clearSampleData = clearSampleData;
+
+    // === INSIGHTS SECTION ===
+    async function initializeInsights() {
+        console.log('🔮 Initializing Insights section...');
+        
+        try {
+            // Set the current section for global access
+            window.currentSection = 'insights';
+            
+            // Set up timeframe button listeners
+            setupInsightsTimeframeSwitching();
+            
+            // Load initial insights (daily by default)
+            await loadInsightsData('daily');
+            
+            console.log('✅ Insights section initialized successfully');
+        } catch (error) {
+            console.error('❌ Error initializing insights:', error);
+        }
+    }
+
+    function setupInsightsTimeframeSwitching() {
+        console.log('⚙️ Setting up Insights timeframe switching...');
+        
+        const timeframeBtns = document.querySelectorAll('#insights-content .time-btn');
+        const insightsViews = document.querySelectorAll('.insights-view');
+        
+        timeframeBtns.forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const timeframe = btn.dataset.timeframe;
+                
+                // Remove active class from all buttons and views
+                timeframeBtns.forEach(b => b.classList.remove('active'));
+                insightsViews.forEach(view => view.classList.remove('active'));
+                
+                // Add active class to clicked button
+                btn.classList.add('active');
+                
+                // Show corresponding view
+                const targetView = document.getElementById(`${timeframe}-insights`);
+                if (targetView) {
+                    targetView.classList.add('active');
+                }
+                
+                // Load insights data for selected timeframe
+                await loadInsightsData(timeframe);
+                
+                console.log(`📊 Switched to ${timeframe} insights view`);
+            });
+        });
+        
+        console.log('✅ Insights timeframe switching set up successfully');
+    }
+
+    async function loadInsightsData(timeframe) {
+        console.log(`🔮 Loading ${timeframe} insights data...`);
+        
+        try {
+            // Show loading state
+            showInsightsLoading(timeframe);
+            
+            switch (timeframe) {
+                case 'daily':
+                    await generateDailyInsights();
+                    break;
+                case 'weekly':
+                    await generateWeeklyInsights();
+                    break;
+                case 'monthly':
+                    await generateMonthlyInsights();
+                    break;
+                default:
+                    console.warn('Unknown timeframe:', timeframe);
+            }
+        } catch (error) {
+            console.error(`❌ Error loading ${timeframe} insights:`, error);
+            showInsightsError(timeframe, error.message);
+        }
+    }
+
+    // === DATA COLLECTION FUNCTIONS ===
+    async function collectUserDataForInsights() {
+        console.log('📊 Collecting user data for insights...');
+        
+        try {
+            const userData = {
+                profile: await getUserProfileData(),
+                goals: await getUserGoalsData(),
+                todayData: await validateDailyData(dailyData),
+                currentMetrics: await getCurrentBodyMetrics(),
+                recentHistory: await getNutritionHistory(7) // Last 7 days
+            };
+            
+            console.log('📊 User data collected:', userData);
+            return userData;
+        } catch (error) {
+            console.error('❌ Error collecting user data:', error);
+            return null;
+        }
+    }
+
+    async function validateDailyData(data) {
+        // Ensure daily data has the required structure
+        const validatedData = {
+            date: data.date || new Date().toLocaleDateString(),
+            meals: data.meals || { breakfast: [], lunch: [], dinner: [], snacks: [] },
+            totals: data.totals || { calories: 0, protein: 0, carbs: 0, fat: 0 },
+            goals: data.goals || { calories: 2000, protein: 120 }
+        };
+        
+        // Ensure all meal arrays exist
+        ['breakfast', 'lunch', 'dinner', 'snacks'].forEach(meal => {
+            if (!validatedData.meals[meal]) {
+                validatedData.meals[meal] = [];
+            }
+        });
+        
+        console.log('✅ Daily data validated:', validatedData);
+        return validatedData;
+    }
+
+    async function getUserProfileData() {
+        if (!currentUser || !window.firebaseDb) {
+            return { age: 25, gender: 'unknown', activityLevel: 'moderate', goal: 'maintain' };
+        }
+        
+        try {
+            const profileRef = window.firebaseDb.doc(window.firebaseDb.db, 'users', currentUser.uid, 'profile', 'current');
+            const doc = await window.firebaseDb.getDoc(profileRef);
+            
+            if (doc.exists()) {
+                return doc.data();
+            }
+            
+            // Fallback to form data if available
+            const ageFromForm = document.getElementById('profile-age')?.value;
+            const genderFromForm = document.getElementById('profile-gender')?.value;
+            
+            return {
+                age: parseInt(ageFromForm) || 25,
+                gender: genderFromForm || 'unknown',
+                activityLevel: 'moderate',
+                goal: 'maintain'
+            };
+        } catch (error) {
+            console.error('❌ Error getting profile data:', error);
+            return { age: 25, gender: 'unknown', activityLevel: 'moderate', goal: 'maintain' };
+        }
+    }
+
+    async function getUserGoalsData() {
+        if (!currentUser || !window.firebaseDb) {
+            return { calories: 2000, protein: 120, carbs: 250, fat: 65 };
+        }
+        
+        try {
+            const goalsRef = window.firebaseDb.doc(window.firebaseDb.db, 'users', currentUser.uid, 'goals', 'current');
+            const doc = await window.firebaseDb.getDoc(goalsRef);
+            
+            if (doc.exists()) {
+                const data = doc.data();
+                return {
+                    calories: data.calories || 2000,
+                    protein: data.protein || 120,
+                    carbs: data.carbs || 250,
+                    fat: data.fat || 65
+                };
+            }
+            
+            // Fallback to daily data goals
+            return dailyData.goals || { calories: 2000, protein: 120 };
+        } catch (error) {
+            console.error('❌ Error getting goals data:', error);
+            return { calories: 2000, protein: 120, carbs: 250, fat: 65 };
+        }
+    }
+
+    // === AI INSIGHTS GENERATION ===
+    async function generateDailyInsights() {
+        console.log('🔮 Generating AI-powered daily insights...');
+        
+        try {
+            const userData = await collectUserDataForInsights();
+            if (!userData) {
+                throw new Error('Failed to collect user data');
+            }
+            
+            const requestData = {
+                todayData: userData.todayData,
+                goals: userData.goals,
+                userProfile: userData.profile
+            };
+            
+            console.log('📤 Sending daily insights request:', requestData);
+            
+            const response = await fetch('/api/ai-insights/daily', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestData)
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const insights = await response.json();
+            console.log('📥 Received daily insights:', insights);
+            
+            hideInsightsLoading('daily');
+            updateDailyInsightsUI(insights);
+            
+        } catch (error) {
+            console.error('❌ Error generating daily insights:', error);
+            hideInsightsLoading('daily');
+            showInsightsError('daily', error.message);
+        }
+    }
+
+    async function generateWeeklyInsights() {
+        console.log('🔮 Generating AI-powered weekly insights...');
+        
+        try {
+            const userData = await collectUserDataForInsights();
+            if (!userData) {
+                throw new Error('Failed to collect user data');
+            }
+            
+            // Convert Firebase history object to array format expected by server
+            const weeklyDataArray = Object.values(userData.recentHistory || {});
+            
+            const requestData = {
+                weeklyData: weeklyDataArray,
+                goals: userData.goals,
+                userProfile: userData.profile,
+                currentMetrics: userData.currentMetrics
+            };
+            
+            console.log('📤 Sending weekly insights request:', requestData);
+            
+            const response = await fetch('/api/ai-insights/weekly', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestData)
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const insights = await response.json();
+            console.log('📥 Received weekly insights:', insights);
+            
+            hideInsightsLoading('weekly');
+            updateWeeklyInsightsUI(insights);
+            
+        } catch (error) {
+            console.error('❌ Error generating weekly insights:', error);
+            hideInsightsLoading('weekly');
+            showInsightsError('weekly', error.message);
+        }
+    }
+
+    async function generateMonthlyInsights() {
+        console.log('🔮 Generating AI-powered monthly insights...');
+        
+        try {
+            const userData = await collectUserDataForInsights();
+            if (!userData) {
+                throw new Error('Failed to collect user data');
+            }
+            
+            // Get 30 days of data for monthly analysis
+            const monthlyHistory = await getNutritionHistory(30);
+            
+            // Convert Firebase history object to array format expected by server
+            const monthlyDataArray = Object.values(monthlyHistory || {});
+            
+            const requestData = {
+                monthlyData: monthlyDataArray,
+                goals: userData.goals,
+                userProfile: userData.profile,
+                currentMetrics: userData.currentMetrics
+            };
+            
+            console.log('📤 Sending monthly insights request:', requestData);
+            
+            const response = await fetch('/api/ai-insights/monthly', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestData)
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const insights = await response.json();
+            console.log('📥 Received monthly insights:', insights);
+            
+            hideInsightsLoading('monthly');
+            updateMonthlyInsightsUI(insights);
+            
+        } catch (error) {
+            console.error('❌ Error generating monthly insights:', error);
+            hideInsightsLoading('monthly');
+            showInsightsError('monthly', error.message);
+        }
+    }
+
+    // === UI UPDATE FUNCTIONS ===
+    function updateDailyInsightsUI(insights) {
+        console.log('🎨 Updating daily insights UI...');
+        
+        try {
+            // Update main insight text
+            const insightText = document.getElementById('daily-insight-text');
+            if (insightText && insights.nutritionBalance) {
+                insightText.textContent = `${insights.nutritionBalance} ${insights.mealTiming || ''}`;
+            }
+            
+            // Update recommendations
+            const recommendationsContainer = document.querySelector('#daily-insights .insight-recommendations');
+            if (recommendationsContainer && insights.recommendations) {
+                recommendationsContainer.innerHTML = '';
+                
+                insights.recommendations.forEach((rec, index) => {
+                    const iconType = index === 0 ? 'success' : (index === 1 ? 'warning' : 'info');
+                    const iconName = iconType === 'success' ? 'check-circle' : (iconType === 'warning' ? 'alert-circle' : 'info');
+                    
+                    const recItem = document.createElement('div');
+                    recItem.className = 'recommendation-item';
+                    recItem.innerHTML = `
+                        <i data-lucide="${iconName}" class="rec-icon ${iconType}"></i>
+                        <span>${rec}</span>
+                    `;
+                    recommendationsContainer.appendChild(recItem);
+                });
+                
+                // Re-initialize Lucide icons
+                if (window.lucide) {
+                    window.lucide.createIcons();
+                }
+            }
+            
+            // Update goal suggestions
+            const remainingCalories = document.getElementById('remaining-calories');
+            if (remainingCalories) {
+                const remaining = dailyData.goals.calories - dailyData.totals.calories;
+                remainingCalories.textContent = `~${Math.max(0, remaining)} kcal`;
+            }
+            
+            // Update next meal suggestion if available
+            const nextMealEl = document.querySelector('.suggestion-item:last-child .suggestion-value');
+            if (nextMealEl && insights.nextMealSuggestion) {
+                nextMealEl.textContent = insights.nextMealSuggestion;
+            }
+            
+            console.log('✅ Daily insights UI updated');
+        } catch (error) {
+            console.error('❌ Error updating daily insights UI:', error);
+        }
+    }
+
+    function updateWeeklyInsightsUI(insights) {
+        console.log('🎨 Updating weekly insights UI...');
+        
+        try {
+            // Update main insight text
+            const insightText = document.querySelector('#weekly-insights .insight-text');
+            if (insightText && insights.motivationalMessage) {
+                insightText.textContent = insights.motivationalMessage;
+            }
+            
+            // Update pattern insights
+            if (insights.consistencyScore !== undefined) {
+                const consistencyScore = document.querySelector('.metric-value.good');
+                if (consistencyScore) {
+                    consistencyScore.textContent = `${insights.consistencyScore}%`;
+                }
+            }
+            
+            if (insights.weakestDay) {
+                const weakDays = document.querySelector('.metric-value.warning');
+                if (weakDays) {
+                    weakDays.textContent = insights.weakestDay;
+                }
+            }
+            
+            if (insights.strongestDay) {
+                const bestDays = document.querySelector('.metric-value.success');
+                if (bestDays) {
+                    bestDays.textContent = insights.strongestDay;
+                }
+            }
+            
+            // Update recommendations
+            const weeklyRecs = document.querySelector('.weekly-recommendations');
+            if (weeklyRecs && insights.improvementAreas) {
+                weeklyRecs.innerHTML = '';
+                
+                const recommendations = [
+                    { title: 'Focus This Week', content: insights.nextWeekFocus || 'Continue your current routine' },
+                    { title: 'Improvement Areas', content: insights.improvementAreas.join(', ') },
+                    { title: 'Weekly Status', content: `Goal Status: ${insights.weeklyGoalStatus || 'Unknown'}` }
+                ];
+                
+                recommendations.forEach((rec) => {
+                    const recItem = document.createElement('div');
+                    recItem.className = 'week-rec-item';
+                    recItem.innerHTML = `
+                        <h4>${rec.title}</h4>
+                        <p>${rec.content}</p>
+                    `;
+                    weeklyRecs.appendChild(recItem);
+                });
+            }
+            
+            console.log('✅ Weekly insights UI updated');
+        } catch (error) {
+            console.error('❌ Error updating weekly insights UI:', error);
+        }
+    }
+
+    function updateMonthlyInsightsUI(insights) {
+        console.log('🎨 Updating monthly insights UI...');
+        
+        try {
+            // Update main insight text
+            const insightText = document.querySelector('#monthly-insights .insight-text');
+            if (insightText && insights.motivationBoost) {
+                insightText.textContent = insights.motivationBoost;
+            }
+            
+            // Update achievements
+            const achievementsList = document.querySelector('.achievement-list');
+            if (achievementsList && insights.monthlyHighlights) {
+                achievementsList.innerHTML = '';
+                insights.monthlyHighlights.forEach(highlight => {
+                    const li = document.createElement('li');
+                    li.textContent = highlight;
+                    achievementsList.appendChild(li);
+                });
+            }
+            
+            // Update improvements
+            const improvementsList = document.querySelector('.improvement-list');
+            if (improvementsList && insights.areasForImprovement) {
+                improvementsList.innerHTML = '';
+                insights.areasForImprovement.forEach(improvement => {
+                    const li = document.createElement('li');
+                    li.textContent = improvement;
+                    improvementsList.appendChild(li);
+                });
+            }
+            
+            // Update strategy recommendations
+            const strategyRecs = document.querySelector('.strategy-recommendations');
+            if (strategyRecs) {
+                strategyRecs.innerHTML = '';
+                
+                const strategies = [
+                    { title: 'Overall Progress', content: `Status: ${insights.overallProgress || 'Unknown'}` },
+                    { title: 'Goal Alignment', content: insights.goalAlignment ? `You are ${insights.goalAlignment}` : 'Continue focusing on your goals' },
+                    { title: 'Next Month Strategy', content: insights.nextMonthStrategy || 'Keep up the good work!' }
+                ];
+                
+                strategies.forEach((strategy) => {
+                    const strategyItem = document.createElement('div');
+                    strategyItem.className = 'strategy-item';
+                    strategyItem.innerHTML = `
+                        <h4>${strategy.title}</h4>
+                        <p>${strategy.content}</p>
+                    `;
+                    strategyRecs.appendChild(strategyItem);
+                });
+            }
+            
+            console.log('✅ Monthly insights UI updated');
+        } catch (error) {
+            console.error('❌ Error updating monthly insights UI:', error);
+        }
+    }
+
+    // === LOADING & ERROR STATES ===
+    function showInsightsLoading(timeframe) {
+        console.log(`⏳ Showing loading state for ${timeframe} insights...`);
+        
+        const view = document.getElementById(`${timeframe}-insights`);
+        if (!view) return;
+        
+        // Add loading overlay
+        const loadingOverlay = document.createElement('div');
+        loadingOverlay.className = 'insights-loading-overlay';
+        loadingOverlay.innerHTML = `
+            <div class="loading-content">
+                <div class="loading-spinner"></div>
+                <p>Analyzing your nutrition data...</p>
+                <p class="loading-subtext">Our AI is generating personalized insights</p>
+            </div>
+        `;
+        
+        view.style.position = 'relative';
+        view.appendChild(loadingOverlay);
+    }
+
+    function hideInsightsLoading(timeframe) {
+        const view = document.getElementById(`${timeframe}-insights`);
+        if (!view) return;
+        
+        const loadingOverlay = view.querySelector('.insights-loading-overlay');
+        if (loadingOverlay) {
+            loadingOverlay.remove();
+        }
+    }
+
+    function showInsightsError(timeframe, errorMessage) {
+        console.log(`❌ Showing error state for ${timeframe} insights:`, errorMessage);
+        
+        hideInsightsLoading(timeframe);
+        
+        const view = document.getElementById(`${timeframe}-insights`);
+        if (!view) return;
+        
+        // Show error message in the first insight card
+        const firstCard = view.querySelector('.insight-card');
+        if (firstCard) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'insights-error-message';
+            errorDiv.innerHTML = `
+                <div class="error-content">
+                    <i data-lucide="alert-triangle" class="error-icon"></i>
+                    <h4>Unable to Generate Insights</h4>
+                    <p>${errorMessage}</p>
+                    <button class="btn btn-primary retry-insights-btn" onclick="loadInsightsData('${timeframe}')">
+                        <i data-lucide="refresh-cw"></i>
+                        Try Again
+                    </button>
+                </div>
+            `;
+            
+            firstCard.innerHTML = '';
+            firstCard.appendChild(errorDiv);
+            
+            // Re-initialize Lucide icons
+            if (window.lucide) {
+                window.lucide.createIcons();
+            }
+        }
+    }
+
+    // Debug function to check insights state
+    window.debugInsights = function() {
+        console.log('=== INSIGHTS DEBUG ===');
+        console.log('Current user:', currentUser);
+        console.log('Daily data:', dailyData);
+        console.log('Current section:', window.currentSection);
+    };
 
     // Debug function to check current user and data
     window.debugUserData = function() {
@@ -4820,6 +5437,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Update height
                 if (data.height) {
                     updateElement('current-height', data.height.toString());
+                }
+                
+                // Update body fat
+                if (data.bodyFat) {
+                    updateElement('current-body-fat', data.bodyFat.toString());
+                    if (data.bodyFatUpdatedAt) {
+                        const date = data.bodyFatUpdatedAt.toDate ? data.bodyFatUpdatedAt.toDate() : new Date(data.bodyFatUpdatedAt);
+                        updateElement('bodyfat-date', `Last updated: ${date.toLocaleDateString()}`);
+                    }
+                }
+                
+                // Update BMI if available in data, otherwise calculate it
+                if (data.bmi) {
+                    updateElement('current-bmi', data.bmi.toString());
+                    if (data.bmiCategory) {
+                        updateElement('bmi-category', data.bmiCategory);
+                    }
+                } else if (data.weight && data.height) {
+                    // Calculate BMI if not stored
+                    await calculateAndUpdateBMI();
                 }
                 
                 return data; // Return the data for use in other functions
@@ -4997,17 +5634,22 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!currentUser) return;
 
         try {
-            const today = new Date().toLocaleDateString();
+            // Use ISO date format to avoid path issues (YYYY-MM-DD)
+            const today = new Date();
+            const dateKey = today.toISOString().split('T')[0]; // YYYY-MM-DD format
+            const displayDate = today.toLocaleDateString(); // For display purposes
+            
             const logData = {
-                date: today,
+                date: displayDate,
+                dateKey: dateKey, // Store both for compatibility
                 type: type,
                 value: value,
                 secondaryValue: secondaryValue,
                 timestamp: window.firebaseDb.serverTimestamp()
             };
 
-            // Log to history
-            const historyRef = window.firebaseDb.doc(window.firebaseDb.db, 'users', currentUser.uid, 'bodyMetrics', 'history', today);
+            // Log to history using ISO date format as document ID
+            const historyRef = window.firebaseDb.doc(window.firebaseDb.db, 'users', currentUser.uid, 'bodyMetrics', 'history', dateKey);
             await window.firebaseDb.setDoc(historyRef, logData);
 
             // Update current metrics
@@ -5022,11 +5664,356 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             await window.firebaseDb.setDoc(currentRef, updateData, { merge: true });
-            console.log(`✅ Body metric logged: ${type} = ${value}`);
+            console.log(`✅ Body metric logged: ${type} = ${value} on ${dateKey}`);
             
         } catch (error) {
             console.error('Error logging body metric:', error);
         }
+    }
+
+    // Body Metrics Editing Functions
+    function toggleEditForm(metric) {
+        console.log(`🔧 Toggling edit form for ${metric}`);
+        
+        const displayElement = document.querySelector(`#${metric === 'bodyfat' ? 'current-body-fat' : 'current-' + metric}`);
+        const editForm = document.getElementById(`${metric}-edit-form`);
+        const inputElement = document.getElementById(`${metric}-input`);
+        
+        if (displayElement && editForm) {
+            // Hide display, show edit form
+            displayElement.parentElement.style.display = 'none';
+            editForm.classList.remove('hidden');
+            
+            // Set current value in input
+            if (inputElement) {
+                const currentValue = displayElement.textContent.replace(/[^\d.]/g, '');
+                inputElement.value = currentValue;
+                inputElement.focus();
+            }
+        }
+    }
+
+    async function saveMetric(metric) {
+        console.log(`💾 Saving ${metric} metric`);
+        
+        const inputElement = document.getElementById(`${metric}-input`);
+        const displayElement = document.querySelector(`#${metric === 'bodyfat' ? 'current-body-fat' : 'current-' + metric}`);
+        const editForm = document.getElementById(`${metric}-edit-form`);
+        
+        if (!inputElement || !displayElement || !editForm) {
+            console.error(`Missing elements for ${metric} edit`);
+            return;
+        }
+        
+        const newValue = parseFloat(inputElement.value);
+        if (isNaN(newValue) || newValue <= 0) {
+            alert('Please enter a valid positive number');
+            return;
+        }
+        
+        try {
+            // Update display
+            displayElement.textContent = newValue.toFixed(metric === 'height' ? 0 : 1);
+            
+            // Save to Firebase if user is logged in
+            if (currentUser) {
+                const updates = {};
+                const fieldName = metric === 'bodyfat' ? 'bodyFat' : metric;
+                updates[fieldName] = newValue;
+                updates[`${fieldName}UpdatedAt`] = new Date();
+                
+                const currentMetricsRef = window.firebaseDb.doc(window.firebaseDb.db, 'users', currentUser.uid, 'bodyMetrics', 'current');
+                await window.firebaseDb.setDoc(currentMetricsRef, updates, { merge: true });
+                
+                // Log the metric change
+                await logBodyMetric(metric, newValue);
+                
+                // Update BMI if weight or height changed
+                if (metric === 'weight' || metric === 'height') {
+                    await calculateAndUpdateBMI();
+                }
+                
+                // Update date display
+                const dateElement = document.getElementById(`${metric}-date`);
+                if (dateElement) {
+                    dateElement.textContent = `Last updated: ${new Date().toLocaleDateString()}`;
+                }
+                
+                console.log(`✅ ${metric} saved successfully`);
+                showNotification(`${metric.charAt(0).toUpperCase() + metric.slice(1)} updated successfully!`);
+            }
+            
+            // Hide edit form, show display
+            cancelEdit(metric);
+            
+        } catch (error) {
+            console.error(`Error saving ${metric}:`, error);
+            showNotification(`Error saving ${metric}. Please try again.`, 'error');
+        }
+    }
+
+    function cancelEdit(metric) {
+        console.log(`❌ Canceling ${metric} edit`);
+        
+        const displayElement = document.querySelector(`#${metric === 'bodyfat' ? 'current-body-fat' : 'current-' + metric}`);
+        const editForm = document.getElementById(`${metric}-edit-form`);
+        
+        if (displayElement && editForm) {
+            // Show display, hide edit form
+            displayElement.parentElement.style.display = 'block';
+            editForm.classList.add('hidden');
+        }
+    }
+
+    async function calculateAndUpdateBMI() {
+        try {
+            const weightElement = document.getElementById('current-weight');
+            const heightElement = document.getElementById('current-height');
+            const bmiElement = document.getElementById('current-bmi');
+            const categoryElement = document.getElementById('bmi-category');
+            
+            if (!weightElement || !heightElement || !bmiElement || !categoryElement) {
+                return;
+            }
+            
+            const weight = parseFloat(weightElement.textContent.replace(/[^\d.]/g, ''));
+            const height = parseFloat(heightElement.textContent.replace(/[^\d.]/g, ''));
+            
+            if (weight > 0 && height > 0) {
+                const heightInMeters = height / 100;
+                const bmi = weight / (heightInMeters * heightInMeters);
+                
+                bmiElement.textContent = bmi.toFixed(1);
+                
+                // Update BMI category
+                let category = 'Normal Weight';
+                if (bmi < 18.5) category = 'Underweight';
+                else if (bmi >= 25 && bmi < 30) category = 'Overweight';
+                else if (bmi >= 30) category = 'Obese';
+                
+                categoryElement.textContent = category;
+                
+                // Save to Firebase
+                if (currentUser) {
+                    const currentMetricsRef = window.firebaseDb.doc(window.firebaseDb.db, 'users', currentUser.uid, 'bodyMetrics', 'current');
+                    await window.firebaseDb.setDoc(currentMetricsRef, {
+                        bmi: parseFloat(bmi.toFixed(1)),
+                        bmiCategory: category,
+                        bmiUpdatedAt: new Date()
+                    }, { merge: true });
+                }
+            }
+        } catch (error) {
+            console.error('Error calculating BMI:', error);
+        }
+    }
+
+    // Weight Analytics Function
+    async function loadWeightAnalytics() {
+        console.log('📊 Loading weight analytics...');
+        
+        try {
+            if (!currentUser) {
+                console.log('⚠️ No user logged in for weight analytics');
+                return;
+            }
+            
+            // Get timeframe selection
+            const timeframeSelect = document.getElementById('weight-timeframe');
+            const timeframe = timeframeSelect ? timeframeSelect.value : '30';
+            const days = parseInt(timeframe);
+            
+            console.log(`📅 Loading weight data for last ${days} days`);
+            
+            // Get weight history from Firebase
+            const weightHistory = await getWeightHistory(days);
+            console.log('📊 Weight history loaded:', Object.keys(weightHistory).length, 'entries');
+            
+            // Update weight analytics display
+            displayWeightAnalytics(weightHistory);
+            
+            // Update chart if available
+            if (typeof Chart !== 'undefined') {
+                createWeightChart(weightHistory);
+            } else {
+                console.log('📊 Chart.js not available, skipping chart creation');
+            }
+            
+        } catch (error) {
+            console.error('❌ Error loading weight analytics:', error);
+        }
+    }
+
+    async function getWeightHistory(days = 30) {
+        try {
+            const endDate = new Date();
+            const startDate = new Date();
+            startDate.setDate(startDate.getDate() - days);
+            
+            const weightData = {};
+            
+            console.log(`📊 Getting weight history for last ${days} days`);
+            
+            // Get historical weight data from history collection
+            try {
+                // Query all possible dates in the range using ISO format
+                for (let i = 0; i < days; i++) {
+                    const date = new Date();
+                    date.setDate(date.getDate() - i);
+                    const dateKey = date.toISOString().split('T')[0]; // YYYY-MM-DD format
+                    const displayDate = date.toLocaleDateString(); // For chart display
+                    
+                    try {
+                        const historyRef = window.firebaseDb.doc(window.firebaseDb.db, 'users', currentUser.uid, 'bodyMetrics', 'history', dateKey);
+                        const historyDoc = await window.firebaseDb.getDoc(historyRef);
+                        
+                        if (historyDoc.exists()) {
+                            const data = historyDoc.data();
+                            if (data.type === 'weight' && data.value) {
+                                weightData[displayDate] = parseFloat(data.value);
+                                console.log(`📊 Found weight data: ${data.value} kg on ${displayDate} (stored as ${dateKey})`);
+                            }
+                        }
+                    } catch (dateError) {
+                        // Skip dates that don't exist - this is normal
+                        continue;
+                    }
+                }
+            } catch (error) {
+                console.error('Error getting weight history:', error);
+            }
+            
+            // Also get current weight if not found in history
+            if (Object.keys(weightData).length === 0) {
+                try {
+                    const currentMetricsRef = window.firebaseDb.doc(window.firebaseDb.db, 'users', currentUser.uid, 'bodyMetrics', 'current');
+                    const currentDoc = await window.firebaseDb.getDoc(currentMetricsRef);
+                    
+                    if (currentDoc.exists()) {
+                        const data = currentDoc.data();
+                        if (data.weight) {
+                            const today = new Date().toLocaleDateString();
+                            weightData[today] = parseFloat(data.weight);
+                            console.log(`📊 Found current weight: ${data.weight} kg on ${today}`);
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error getting current weight:', error);
+                }
+            }
+            
+            console.log('📊 Weight history data:', Object.keys(weightData).length, 'entries');
+            return weightData;
+        } catch (error) {
+            console.error('Error getting weight history:', error);
+            return {};
+        }
+    }
+
+    function displayWeightAnalytics(weightHistory) {
+        const entries = Object.keys(weightHistory);
+        
+        if (entries.length === 0) {
+            console.log('📊 No weight data available for analytics - showing placeholder');
+            // Show placeholder values
+            updateElement('weight-change', '--');
+            updateElement('weight-trend', '--');
+            updateElement('entries-count', '0');
+            updateElement('avg-weekly-change', '--');
+            return;
+        }
+        
+        // Calculate analytics
+        const weights = Object.values(weightHistory).map(w => parseFloat(w));
+        const currentWeight = weights[weights.length - 1];
+        const startWeight = weights[0];
+        const weightChange = currentWeight - startWeight;
+        
+        // Calculate trend
+        const trend = weightChange > 0 ? 'Gaining' : weightChange < 0 ? 'Losing' : 'Stable';
+        
+        // Update display elements if they exist
+        updateElement('weight-change', `${weightChange > 0 ? '+' : ''}${weightChange.toFixed(1)} kg`);
+        updateElement('weight-trend', trend);
+        updateElement('entries-count', entries.length.toString());
+        
+        // Calculate weekly change if we have enough data
+        if (entries.length >= 7) {
+            const weeklyChange = (weightChange / entries.length) * 7;
+            updateElement('avg-weekly-change', `${weeklyChange > 0 ? '+' : ''}${weeklyChange.toFixed(2)} kg`);
+        } else {
+            updateElement('avg-weekly-change', 'Need more data');
+        }
+        
+        console.log('📊 Weight analytics updated:', {
+            entries: entries.length,
+            change: weightChange.toFixed(1),
+            trend: trend
+        });
+    }
+
+    function createWeightChart(weightHistory) {
+        const chartCanvas = document.getElementById('weight-trajectory-chart');
+        if (!chartCanvas) {
+            console.log('📊 Weight chart canvas not found');
+            return;
+        }
+        
+        const ctx = chartCanvas.getContext('2d');
+        const entries = Object.keys(weightHistory).sort();
+        const weights = entries.map(date => weightHistory[date]);
+        
+        if (entries.length === 0) {
+            console.log('📊 No weight data available for chart');
+            return;
+        }
+        
+        // Destroy existing chart if it exists
+        if (window.weightChart) {
+            window.weightChart.destroy();
+        }
+        
+        console.log('📊 Creating weight chart with', entries.length, 'data points');
+        
+        window.weightChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: entries,
+                datasets: [{
+                    label: 'Weight (kg)',
+                    data: weights,
+                    borderColor: 'var(--primary-color)',
+                    backgroundColor: 'rgba(var(--primary-color-rgb), 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        title: {
+                            display: true,
+                            text: 'Weight (kg)'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Date'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
     }
 
     // Goals & Targets Initialization
@@ -5035,11 +6022,6 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Note: Old goal elements have been replaced with new questionnaire interface
         // Only update elements that still exist
-        
-        // Update activity displays (if elements exist)
-        updateElement('daily-steps', '8,432');
-        updateElement('calories-burned', '420');
-        updateElement('weekly-workouts', '3');
         
         // Set nutrition targets with default values (if elements exist)
         const calorieTarget = document.getElementById('calorie-target');
@@ -5050,13 +6032,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (proteinTarget) proteinTarget.value = 120;
         if (activityLevel) activityLevel.value = 'moderate';
         
-        // Update progress bars (if elements exist)
-        updateProgressBar('steps-progress', 84);
-        updateProgressBar('calories-progress', 84);
-        updateProgressBar('workouts-progress', 75);
-        
         setupGoalsEventListeners();
-        console.log('✅ Goals initialized with sample data');
+        console.log('✅ Goals initialized');
     }
 
     async function loadGoalsData() {
@@ -5068,15 +6045,6 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (goalsDoc.exists()) {
                 const data = goalsDoc.data();
-                
-                // Update weight goal display
-                // Note: Old goal elements have been replaced with new questionnaire interface
-                // Skip updating elements that no longer exist
-                
-                // Update activity goals (if elements exist)
-                updateElement('daily-steps', data.dailySteps || '0');
-                updateElement('calories-burned', data.caloriesBurned || '0');
-                updateElement('weekly-workouts', data.weeklyWorkouts || '0');
                 
                 // Update nutrition targets (if elements exist)
                 const calorieTarget = document.getElementById('calorie-target');
@@ -5151,1980 +6119,6 @@ document.addEventListener('DOMContentLoaded', () => {
             
         } catch (error) {
             console.error('Error saving nutrition goals:', error);
-        }
-    }
-
-    // AI Insights Initialization
-    function initializeAIInsights() {
-        console.log('🧠 Initializing AI Insights...');
-        
-        // Initialize timeframe selector
-        setupTimeframeSelector();
-        
-        // Load insights based on Firebase data
-        loadFirebaseAIInsights();
-        
-        // Setup event listeners
-        setupAIInsightsEventListeners();
-        
-        console.log('✅ AI Insights initialized with Firebase data');
-    }
-
-    function setupTimeframeSelector() {
-        const timeframeButtons = document.querySelectorAll('.timeframe-btn');
-        const insightViews = document.querySelectorAll('.insights-view');
-        
-        timeframeButtons.forEach(btn => {
-            btn.addEventListener('click', () => {
-                // Update active button
-                timeframeButtons.forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                
-                // Show corresponding view
-                const timeframe = btn.dataset.timeframe;
-                insightViews.forEach(view => {
-                    view.style.display = view.id === `${timeframe}-insights-view` ? 'block' : 'none';
-                });
-                
-                // Update date display
-                updateDateDisplay(timeframe);
-            });
-        });
-        
-        // Set default view
-        document.querySelector('[data-timeframe="daily"]').classList.add('active');
-        document.getElementById('daily-insights-view').style.display = 'block';
-        updateDateDisplay('daily');
-    }
-
-    function updateDateDisplay(timeframe) {
-        const now = new Date();
-        let dateText = '';
-        
-        switch (timeframe) {
-            case 'daily':
-                dateText = now.toLocaleDateString('en-US', { 
-                    weekday: 'long', 
-                    year: 'numeric', 
-                    month: 'long', 
-                    day: 'numeric' 
-                });
-                break;
-            case 'weekly':
-                const weekStart = new Date(now.setDate(now.getDate() - now.getDay()));
-                const weekEnd = new Date(weekStart);
-                weekEnd.setDate(weekStart.getDate() + 6);
-                dateText = `${weekStart.toLocaleDateString()} - ${weekEnd.toLocaleDateString()}`;
-                break;
-            case 'monthly':
-                dateText = now.toLocaleDateString('en-US', { 
-                    year: 'numeric', 
-                    month: 'long' 
-                });
-                break;
-        }
-        
-        const dateEl = document.getElementById(`${timeframe}-date`);
-        if (dateEl) {
-            dateEl.textContent = dateText;
-        }
-    }
-
-    async function loadFirebaseAIInsights() {
-        if (!currentUser) {
-            displaySampleInsights();
-            return;
-        }
-
-        try {
-            // Load real data from Firebase
-            await Promise.all([
-                loadDailyInsightsFromFirebase(),
-                loadWeeklyInsightsFromFirebase(),
-                loadMonthlyInsightsFromFirebase()
-            ]);
-        } catch (error) {
-            console.error('Error loading Firebase insights:', error);
-            displaySampleInsights(); // Fallback to sample data
-        }
-    }
-
-    async function loadDailyInsightsFromFirebase() {
-        try {
-            // Get today's data
-            const todayData = await getTodaysNutritionData();
-            const goals = await getUserGoals();
-            
-            // Calculate insights
-            const insights = generateDailyInsights(todayData, goals);
-            
-            // Display daily insights
-            displayDailyInsights(insights);
-            
-        } catch (error) {
-            console.error('Error loading daily insights:', error);
-            displayDailyInsightsError();
-        }
-    }
-
-    async function loadWeeklyInsightsFromFirebase() {
-        try {
-            // Get this week's data
-            const weekData = await getWeeklyNutritionData();
-            const goals = await getUserGoals();
-            
-            // Calculate insights
-            const insights = generateWeeklyInsights(weekData, goals);
-            
-            // Display weekly insights
-            displayWeeklyInsights(insights);
-            
-        } catch (error) {
-            console.error('Error loading weekly insights:', error);
-            displayWeeklyInsightsError();
-        }
-    }
-
-    async function loadMonthlyInsightsFromFirebase() {
-        try {
-            // Get this month's data
-            const monthData = await getMonthlyNutritionData();
-            const goals = await getUserGoals();
-            
-            // Calculate insights
-            const insights = generateMonthlyInsights(monthData, goals);
-            
-            // Display monthly insights
-            displayMonthlyInsights(insights);
-            
-        } catch (error) {
-            console.error('Error loading monthly insights:', error);
-            displayMonthlyInsightsError();
-        }
-    }
-
-    function generateDailyInsights(todayData, goals) {
-        const insights = {
-            goalProgress: calculateGoalProgress(todayData, goals),
-            mealTiming: analyzeMealTiming(todayData),
-            smartSuggestions: generateSmartSuggestions(todayData, goals),
-            nextMeal: suggestNextMeal(todayData, goals)
-        };
-        
-        return insights;
-    }
-
-    function generateWeeklyInsights(weekData, goals) {
-        const insights = {
-            consistencyScore: calculateConsistencyScore(weekData),
-            eatingPatterns: analyzeEatingPatterns(weekData),
-            goalAchievement: calculateWeeklyGoalAchievement(weekData, goals),
-            strategies: generateWeeklyStrategies(weekData, goals)
-        };
-        
-        return insights;
-    }
-
-    function generateMonthlyInsights(monthData, goals) {
-        const insights = {
-            monthlyProgress: calculateMonthlyProgress(monthData, goals),
-            habitFormation: analyzeHabitFormation(monthData),
-            longTermTrends: analyzeLongTermTrends(monthData),
-            achievements: identifyAchievements(monthData, goals),
-            nextMonthStrategy: generateNextMonthStrategy(monthData, goals)
-        };
-        
-        return insights;
-    }
-
-    function displayDailyInsights(insights) {
-        // Goal Progress
-        const goalProgressEl = document.getElementById('daily-goal-progress');
-        if (goalProgressEl && insights.goalProgress) {
-            goalProgressEl.innerHTML = generateGoalProgressHTML(insights.goalProgress);
-        }
-
-        // Meal Timing
-        const mealTimingEl = document.getElementById('daily-meal-timing');
-        if (mealTimingEl && insights.mealTiming) {
-            mealTimingEl.innerHTML = generateMealTimingHTML(insights.mealTiming);
-        }
-
-        // Smart Suggestions
-        const suggestionsEl = document.getElementById('daily-suggestions');
-        if (suggestionsEl && insights.smartSuggestions) {
-            suggestionsEl.innerHTML = generateSuggestionsHTML(insights.smartSuggestions);
-        }
-
-        // Next Meal
-        const nextMealEl = document.getElementById('daily-next-meal');
-        if (nextMealEl && insights.nextMeal) {
-            nextMealEl.innerHTML = generateNextMealHTML(insights.nextMeal);
-        }
-
-        // Update status indicator
-        const statusEl = document.getElementById('daily-goal-status');
-        if (statusEl && insights.goalProgress) {
-            statusEl.textContent = insights.goalProgress.overall;
-            statusEl.className = `status-indicator ${insights.goalProgress.overall.toLowerCase().replace(' ', '-')}`;
-        }
-    }
-
-    function displayWeeklyInsights(insights) {
-        // Consistency Score
-        const consistencyEl = document.getElementById('weekly-consistency');
-        if (consistencyEl && insights.consistencyScore) {
-            consistencyEl.innerHTML = generateConsistencyHTML(insights.consistencyScore);
-        }
-
-        // Eating Patterns
-        const patternsEl = document.getElementById('weekly-patterns');
-        if (patternsEl && insights.eatingPatterns) {
-            patternsEl.innerHTML = generatePatternsHTML(insights.eatingPatterns);
-        }
-
-        // Goal Achievement
-        const achievementEl = document.getElementById('weekly-achievement');
-        if (achievementEl && insights.goalAchievement) {
-            achievementEl.innerHTML = generateAchievementHTML(insights.goalAchievement);
-        }
-
-        // Strategies
-        const strategiesEl = document.getElementById('weekly-strategies');
-        if (strategiesEl && insights.strategies) {
-            strategiesEl.innerHTML = generateStrategiesHTML(insights.strategies);
-        }
-
-        // Update status indicator
-        const statusEl = document.getElementById('weekly-consistency-status');
-        if (statusEl && insights.consistencyScore) {
-            statusEl.textContent = insights.consistencyScore.label;
-            statusEl.className = `status-indicator ${insights.consistencyScore.status}`;
-        }
-    }
-
-    function displayMonthlyInsights(insights) {
-        // Monthly Progress
-        const progressEl = document.getElementById('monthly-progress');
-        if (progressEl && insights.monthlyProgress) {
-            progressEl.innerHTML = generateMonthlyProgressHTML(insights.monthlyProgress);
-        }
-
-        // Habit Formation
-        const habitsEl = document.getElementById('monthly-habits');
-        if (habitsEl && insights.habitFormation) {
-            habitsEl.innerHTML = generateHabitsHTML(insights.habitFormation);
-        }
-
-        // Long-term Trends
-        const trendsEl = document.getElementById('monthly-trends');
-        if (trendsEl && insights.longTermTrends) {
-            trendsEl.innerHTML = generateTrendsHTML(insights.longTermTrends);
-        }
-
-        // Achievements
-        const achievementsEl = document.getElementById('monthly-achievements');
-        if (achievementsEl && insights.achievements) {
-            achievementsEl.innerHTML = generateAchievementsHTML(insights.achievements);
-        }
-
-        // Next Month Strategy
-        const strategyEl = document.getElementById('monthly-strategy');
-        if (strategyEl && insights.nextMonthStrategy) {
-            strategyEl.innerHTML = generateStrategyHTML(insights.nextMonthStrategy);
-        }
-
-        // Update status indicator
-        const statusEl = document.getElementById('monthly-goal-status');
-        if (statusEl && insights.monthlyProgress) {
-            statusEl.textContent = insights.monthlyProgress.overall;
-            statusEl.className = `status-indicator ${insights.monthlyProgress.status}`;
-        }
-    }
-    
-    // Helper functions for generating HTML content
-    function generateGoalProgressHTML(progress) {
-        return `
-            <div class="progress-grid">
-                <div class="progress-item">
-                    <div class="progress-label">Calories</div>
-                    <div class="progress-bar">
-                        <div class="progress-fill" style="width: ${progress.calories.percentage}%"></div>
-                    </div>
-                    <div class="progress-text">${progress.calories.current}/${progress.calories.goal} kcal</div>
-                </div>
-                <div class="progress-item">
-                    <div class="progress-label">Protein</div>
-                    <div class="progress-bar">
-                        <div class="progress-fill" style="width: ${progress.protein.percentage}%"></div>
-                    </div>
-                    <div class="progress-text">${progress.protein.current}/${progress.protein.goal}g</div>
-                </div>
-            </div>
-            <div class="progress-summary">
-                <p>${progress.summary}</p>
-            </div>
-        `;
-    }
-
-    function generateMealTimingHTML(timing) {
-        return `
-            <div class="timing-analysis">
-                <div class="timing-item">
-                    <span class="timing-label">Last Meal</span>
-                    <span class="timing-value">${timing.lastMeal}</span>
-                </div>
-                <div class="timing-item">
-                    <span class="timing-label">Eating Window</span>
-                    <span class="timing-value">${timing.eatingWindow}</span>
-                </div>
-                <div class="timing-item">
-                    <span class="timing-label">Meal Frequency</span>
-                    <span class="timing-value">${timing.frequency}</span>
-                </div>
-            </div>
-            <div class="timing-insight">
-                <p>${timing.insight}</p>
-            </div>
-        `;
-    }
-
-    function generateSuggestionsHTML(suggestions) {
-        const suggestionItems = suggestions.map(suggestion => 
-            `<div class="suggestion-item">
-                <i data-lucide="${suggestion.icon}" class="suggestion-icon"></i>
-                <span class="suggestion-text">${suggestion.text}</span>
-            </div>`
-        ).join('');
-        
-        return `<div class="suggestions-list">${suggestionItems}</div>`;
-    }
-
-    function generateNextMealHTML(nextMeal) {
-        return `
-            <div class="next-meal-card">
-                <div class="meal-header">
-                    <h5>${nextMeal.type}</h5>
-                    <span class="meal-time">${nextMeal.recommendedTime}</span>
-                </div>
-                <div class="meal-suggestions">
-                    ${nextMeal.suggestions.map(suggestion => 
-                        `<div class="meal-suggestion">
-                            <span class="food-name">${suggestion.food}</span>
-                            <span class="food-reason">${suggestion.reason}</span>
-                        </div>`
-                    ).join('')}
-                </div>
-                <div class="meal-target">
-                    <span>Target: ${nextMeal.targetCalories} kcal, ${nextMeal.targetProtein}g protein</span>
-                </div>
-            </div>
-        `;
-    }
-
-    function generateConsistencyHTML(consistency) {
-        return `
-            <div class="consistency-score">
-                <div class="score-circle">
-                    <div class="score-number">${consistency.score}%</div>
-                    <div class="score-label">${consistency.label}</div>
-                </div>
-            </div>
-            <div class="consistency-breakdown">
-                <div class="breakdown-item">
-                    <span class="breakdown-label">Meal Logging</span>
-                    <span class="breakdown-value">${consistency.mealLogging}%</span>
-                </div>
-                <div class="breakdown-item">
-                    <span class="breakdown-label">Goal Adherence</span>
-                    <span class="breakdown-value">${consistency.goalAdherence}%</span>
-                </div>
-                <div class="breakdown-item">
-                    <span class="breakdown-label">Timing Consistency</span>
-                    <span class="breakdown-value">${consistency.timing}%</span>
-                </div>
-            </div>
-        `;
-    }
-
-    function generatePatternsHTML(patterns) {
-        return `
-            <div class="patterns-list">
-                ${patterns.map(pattern => 
-                    `<div class="pattern-item">
-                        <div class="pattern-day">${pattern.day}</div>
-                        <div class="pattern-description">${pattern.description}</div>
-                        <div class="pattern-trend ${pattern.trend}">${pattern.trendLabel}</div>
-                    </div>`
-                ).join('')}
-            </div>
-        `;
-    }
-
-    function generateAchievementHTML(achievement) {
-        return `
-            <div class="achievement-summary">
-                <div class="achievement-score">${achievement.overallScore}%</div>
-                <div class="achievement-label">Weekly Goal Achievement</div>
-            </div>
-            <div class="achievement-details">
-                <div class="achievement-item">
-                    <span class="achievement-metric">Calorie Goals Met</span>
-                    <span class="achievement-count">${achievement.calorieGoalsMet}/7 days</span>
-                </div>
-                <div class="achievement-item">
-                    <span class="achievement-metric">Protein Goals Met</span>
-                    <span class="achievement-count">${achievement.proteinGoalsMet}/7 days</span>
-                </div>
-                <div class="achievement-item">
-                    <span class="achievement-metric">Best Day</span>
-                    <span class="achievement-count">${achievement.bestDay}</span>
-                </div>
-            </div>
-        `;
-    }
-
-    function generateStrategiesHTML(strategies) {
-        return `
-            <div class="strategies-list">
-                ${strategies.map(strategy => 
-                    `<div class="strategy-item">
-                        <div class="strategy-title">${strategy.title}</div>
-                        <div class="strategy-description">${strategy.description}</div>
-                        <div class="strategy-impact">Expected impact: ${strategy.impact}</div>
-                    </div>`
-                ).join('')}
-            </div>
-        `;
-    }
-
-    // Calculation functions for insights
-    function calculateGoalProgress(todayData, goals) {
-        const calorieProgress = todayData.totalCalories || 0;
-        const proteinProgress = todayData.totalProtein || 0;
-        const calorieGoal = goals.calorieGoal || 2000;
-        const proteinGoal = goals.proteinGoal || 100;
-        
-        const caloriePercentage = Math.min((calorieProgress / calorieGoal) * 100, 100);
-        const proteinPercentage = Math.min((proteinProgress / proteinGoal) * 100, 100);
-        
-        let overall = 'On Track';
-        if (caloriePercentage < 70 || proteinPercentage < 70) {
-            overall = 'Needs Attention';
-        } else if (caloriePercentage > 110) {
-            overall = 'Over Target';
-        }
-        
-        const summary = generateProgressSummary(caloriePercentage, proteinPercentage);
-        
-        return {
-            calories: {
-                current: Math.round(calorieProgress),
-                goal: calorieGoal,
-                percentage: Math.round(caloriePercentage)
-            },
-            protein: {
-                current: Math.round(proteinProgress),
-                goal: proteinGoal,
-                percentage: Math.round(proteinPercentage)
-            },
-            overall,
-            summary
-        };
-    }
-
-    function generateProgressSummary(caloriePercentage, proteinPercentage) {
-        if (caloriePercentage < 50) {
-            return "You're behind on your calorie intake today. Consider adding a nutritious snack or larger portions at your next meal.";
-        } else if (caloriePercentage > 110) {
-            return "You've exceeded your calorie goal for today. Focus on lighter options for your remaining meals.";
-        } else if (proteinPercentage < 70) {
-            return "Your protein intake could use a boost. Consider adding lean protein sources to your next meal.";
-        } else {
-            return "Great progress today! You're on track with your nutrition goals.";
-        }
-    }
-
-    function analyzeMealTiming(todayData) {
-        const meals = todayData.meals || [];
-        const now = new Date();
-        
-        if (meals.length === 0) {
-            return {
-                lastMeal: 'No meals logged',
-                eatingWindow: '0 hours',
-                frequency: '0 meals',
-                insight: 'Start logging your meals to get personalized timing insights.'
-            };
-        }
-        
-        const lastMeal = meals[meals.length - 1];
-        const lastMealTime = new Date(lastMeal.timestamp);
-        const timeSinceLastMeal = Math.round((now - lastMealTime) / (1000 * 60 * 60));
-        
-        const firstMeal = meals[0];
-        const firstMealTime = new Date(firstMeal.timestamp);
-        const eatingWindow = Math.round((lastMealTime - firstMealTime) / (1000 * 60 * 60));
-        
-        let insight = '';
-        if (timeSinceLastMeal > 6) {
-            insight = 'It\'s been a while since your last meal. Consider having a balanced snack or your next planned meal.';
-        } else if (eatingWindow > 14) {
-            insight = 'Your eating window is quite long. Consider condensing your meals into a shorter timeframe for better metabolic benefits.';
-        } else {
-            insight = 'Your meal timing looks good! You\'re maintaining a healthy eating pattern.';
-        }
-        
-        return {
-            lastMeal: `${timeSinceLastMeal} hours ago`,
-            eatingWindow: `${eatingWindow} hours`,
-            frequency: `${meals.length} meals`,
-            insight
-        };
-    }
-
-    function generateSmartSuggestions(todayData, goals) {
-        const suggestions = [];
-        const caloriesRemaining = (goals.calorieGoal || 2000) - (todayData.totalCalories || 0);
-        const proteinRemaining = (goals.proteinGoal || 100) - (todayData.totalProtein || 0);
-        
-        if (caloriesRemaining > 300) {
-            suggestions.push({
-                icon: 'utensils',
-                text: `You have ${Math.round(caloriesRemaining)} calories remaining for today`
-            });
-        }
-        
-        if (proteinRemaining > 20) {
-            suggestions.push({
-                icon: 'zap',
-                text: `Add ${Math.round(proteinRemaining)}g more protein to meet your goal`
-            });
-        }
-        
-        if (todayData.meals && todayData.meals.length < 3) {
-            suggestions.push({
-                icon: 'clock',
-                text: 'Consider having regular meals throughout the day'
-            });
-        }
-        
-        suggestions.push({
-            icon: 'droplets',
-            text: 'Stay hydrated - aim for 8 glasses of water today'
-        });
-        
-        return suggestions;
-    }
-
-    function suggestNextMeal(todayData, goals) {
-        const now = new Date();
-        const hour = now.getHours();
-        const caloriesRemaining = (goals.calorieGoal || 2000) - (todayData.totalCalories || 0);
-        const proteinRemaining = (goals.proteinGoal || 100) - (todayData.totalProtein || 0);
-        
-        let mealType = '';
-        let recommendedTime = '';
-        
-        if (hour < 10) {
-            mealType = 'Breakfast';
-            recommendedTime = 'Now';
-        } else if (hour < 14) {
-            mealType = 'Lunch';
-            recommendedTime = hour < 12 ? 'Soon' : 'Now';
-        } else if (hour < 18) {
-            mealType = 'Afternoon Snack';
-            recommendedTime = 'In 1-2 hours';
-        } else {
-            mealType = 'Dinner';
-            recommendedTime = hour < 19 ? 'Soon' : 'Now';
-        }
-        
-        const targetCalories = Math.max(Math.round(caloriesRemaining / 2), 200);
-        const targetProtein = Math.max(Math.round(proteinRemaining / 2), 15);
-        
-        const suggestions = generateMealSuggestions(mealType, targetCalories, targetProtein);
-        
-        return {
-            type: mealType,
-            recommendedTime,
-            targetCalories,
-            targetProtein,
-            suggestions
-        };
-    }
-
-    function generateMealSuggestions(mealType, targetCalories, targetProtein) {
-        const mealSuggestions = {
-            'Breakfast': [
-                { food: 'Greek Yogurt with Berries', reason: 'High protein, antioxidants' },
-                { food: 'Eggs with Whole Grain Toast', reason: 'Complete protein, fiber' },
-                { food: 'Protein Smoothie', reason: 'Quick, portable, customizable' }
-            ],
-            'Lunch': [
-                { food: 'Grilled Chicken Salad', reason: 'Lean protein, vegetables' },
-                { food: 'Quinoa Bowl', reason: 'Complete protein, complex carbs' },
-                { food: 'Turkey Wrap', reason: 'Balanced macros, portable' }
-            ],
-            'Afternoon Snack': [
-                { food: 'Apple with Almond Butter', reason: 'Fiber, healthy fats' },
-                { food: 'Greek Yogurt', reason: 'Protein, probiotics' },
-                { food: 'Nuts and Seeds', reason: 'Protein, healthy fats' }
-            ],
-            'Dinner': [
-                { food: 'Salmon with Vegetables', reason: 'Omega-3s, lean protein' },
-                { food: 'Lean Beef Stir-fry', reason: 'Iron, protein, vegetables' },
-                { food: 'Tofu Curry', reason: 'Plant protein, spices' }
-            ]
-        };
-        
-        return mealSuggestions[mealType] || [
-            { food: 'Balanced meal', reason: 'Meets your nutritional needs' }
-        ];
-    }
-
-    // Calculation functions for weekly and monthly insights
-    function calculateConsistencyScore(weekData) {
-        const daysWithData = weekData.filter(day => day.meals && day.meals.length > 0).length;
-        const totalDays = weekData.length;
-        const mealLogging = Math.round((daysWithData / totalDays) * 100);
-        
-        let goalAdherence = 0;
-        let timing = 0;
-        
-        if (daysWithData > 0) {
-            const daysMetGoals = weekData.filter(day => {
-                const dayCalories = day.totalCalories || 0;
-                const dayGoal = day.calorieGoal || 2000;
-                return Math.abs(dayCalories - dayGoal) / dayGoal <= 0.15; // Within 15%
-            }).length;
-            
-            goalAdherence = Math.round((daysMetGoals / daysWithData) * 100);
-            
-            // Calculate timing consistency (simplified)
-            const daysWithGoodTiming = weekData.filter(day => {
-                return day.meals && day.meals.length >= 3; // At least 3 meals
-            }).length;
-            
-            timing = Math.round((daysWithGoodTiming / daysWithData) * 100);
-        }
-        
-        const overallScore = Math.round((mealLogging + goalAdherence + timing) / 3);
-        
-        let label = 'Excellent';
-        if (overallScore < 60) label = 'Needs Improvement';
-        else if (overallScore < 80) label = 'Good';
-        
-        return {
-            score: overallScore,
-            label,
-            mealLogging,
-            goalAdherence,
-            timing,
-            status: overallScore >= 80 ? 'excellent' : overallScore >= 60 ? 'good' : 'needs-improvement'
-        };
-    }
-
-    function analyzeEatingPatterns(weekData) {
-        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        const patterns = [];
-        
-        weekData.forEach((day, index) => {
-            const dayName = dayNames[index];
-            const calories = day.totalCalories || 0;
-            const goalMet = Math.abs(calories - (day.calorieGoal || 2000)) / (day.calorieGoal || 2000) <= 0.15;
-            
-            let description = '';
-            let trend = 'neutral';
-            let trendLabel = 'Stable';
-            
-            if (calories === 0) {
-                description = 'No meals logged';
-                trend = 'down';
-                trendLabel = 'No Data';
-            } else if (goalMet) {
-                description = 'Goal achieved';
-                trend = 'up';
-                trendLabel = 'On Track';
-            } else if (calories < (day.calorieGoal || 2000)) {
-                description = 'Under target';
-                trend = 'down';
-                trendLabel = 'Below Goal';
-            } else {
-                description = 'Over target';
-                trend = 'up';
-                trendLabel = 'Above Goal';
-            }
-            
-            patterns.push({
-                day: dayName,
-                description,
-                trend,
-                trendLabel
-            });
-        });
-        
-        return patterns;
-    }
-
-    function calculateWeeklyGoalAchievement(weekData, goals) {
-        const daysWithData = weekData.filter(day => day.totalCalories > 0);
-        const calorieGoalsMet = daysWithData.filter(day => {
-            const calorieGoal = goals.calorieGoal || 2000;
-            return Math.abs((day.totalCalories || 0) - calorieGoal) / calorieGoal <= 0.15;
-        }).length;
-        
-        const proteinGoalsMet = daysWithData.filter(day => {
-            const proteinGoal = goals.proteinGoal || 100;
-            return (day.totalProtein || 0) >= proteinGoal * 0.9; // 90% of goal
-        }).length;
-        
-        // Find best day
-        let bestDay = 'None';
-        let bestScore = -1;
-        
-        weekData.forEach((day, index) => {
-            if (day.totalCalories > 0) {
-                const calorieScore = Math.max(0, 100 - Math.abs(((day.totalCalories || 0) - (goals.calorieGoal || 2000)) / (goals.calorieGoal || 2000)) * 100);
-                const proteinScore = Math.min(100, ((day.totalProtein || 0) / (goals.proteinGoal || 100)) * 100);
-                const dayScore = (calorieScore + proteinScore) / 2;
-                
-                if (dayScore > bestScore) {
-                    bestScore = dayScore;
-                    bestDay = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][index];
-                }
-            }
-        });
-        
-        const overallScore = Math.round(((calorieGoalsMet + proteinGoalsMet) / (daysWithData.length * 2)) * 100);
-        
-        return {
-            overallScore,
-            calorieGoalsMet,
-            proteinGoalsMet,
-            bestDay
-        };
-    }
-
-    function generateWeeklyStrategies(weekData, goals) {
-        const strategies = [];
-        
-        // Analyze patterns to suggest strategies
-        const avgCalories = weekData.reduce((sum, day) => sum + (day.totalCalories || 0), 0) / weekData.length;
-        const avgProtein = weekData.reduce((sum, day) => sum + (day.totalProtein || 0), 0) / weekData.length;
-        
-        if (avgCalories < (goals.calorieGoal || 2000) * 0.8) {
-            strategies.push({
-                title: 'Increase Calorie Intake',
-                description: 'Add healthy snacks between meals to reach your daily calorie target',
-                impact: 'High - Better energy and goal achievement'
-            });
-        }
-        
-        if (avgProtein < (goals.proteinGoal || 100) * 0.8) {
-            strategies.push({
-                title: 'Boost Protein Intake',
-                description: 'Include a protein source with each meal and snack',
-                impact: 'High - Better muscle maintenance and satiety'
-            });
-        }
-        
-        const inconsistentDays = weekData.filter(day => day.totalCalories === 0).length;
-        if (inconsistentDays > 2) {
-            strategies.push({
-                title: 'Improve Consistency',
-                description: 'Set daily reminders to log all meals and snacks',
-                impact: 'Medium - Better tracking and awareness'
-            });
-        }
-        
-        return strategies;
-    }
-
-    function calculateMonthlyProgress(monthData, goals) {
-        const daysWithData = monthData.filter(day => day.totalCalories > 0);
-        const totalDays = monthData.length;
-        
-        if (daysWithData.length === 0) {
-            return {
-                overall: 'No Data',
-                status: 'no-data',
-                summary: 'Start logging meals to see your monthly progress.'
-            };
-        }
-        
-        const avgCalories = daysWithData.reduce((sum, day) => sum + day.totalCalories, 0) / daysWithData.length;
-        const avgProtein = daysWithData.reduce((sum, day) => sum + (day.totalProtein || 0), 0) / daysWithData.length;
-        
-        const calorieGoal = goals.calorieGoal || 2000;
-        const proteinGoal = goals.proteinGoal || 100;
-        
-        const calorieAccuracy = 100 - Math.abs((avgCalories - calorieGoal) / calorieGoal * 100);
-        const proteinAccuracy = Math.min(100, (avgProtein / proteinGoal) * 100);
-        const consistencyScore = (daysWithData.length / totalDays) * 100;
-        
-        const overallScore = Math.round((calorieAccuracy + proteinAccuracy + consistencyScore) / 3);
-        
-        let overall = 'Excellent';
-        let status = 'excellent';
-        
-        if (overallScore < 60) {
-            overall = 'Needs Improvement';
-            status = 'needs-improvement';
-        } else if (overallScore < 80) {
-            overall = 'Good';
-            status = 'good';
-        }
-        
-        const summary = `Logged ${daysWithData.length}/${totalDays} days with an average of ${Math.round(avgCalories)} calories and ${Math.round(avgProtein)}g protein daily.`;
-        
-        return {
-            overall,
-            status,
-            summary,
-            overallScore,
-            avgCalories: Math.round(avgCalories),
-            avgProtein: Math.round(avgProtein),
-            consistencyDays: daysWithData.length,
-            totalDays
-        };
-    }
-
-    function analyzeHabitFormation(monthData) {
-        const habits = [];
-        
-        // Meal timing habit
-        const mealsWithGoodTiming = monthData.filter(day => {
-            return day.meals && day.meals.length >= 3;
-        }).length;
-        
-        habits.push({
-            name: 'Regular Meals',
-            score: Math.round((mealsWithGoodTiming / monthData.length) * 100),
-            status: mealsWithGoodTiming / monthData.length > 0.8 ? 'strong' : 'developing'
-        });
-        
-        // Protein habit
-        const daysWithGoodProtein = monthData.filter(day => {
-            return (day.totalProtein || 0) >= (day.proteinGoal || 100) * 0.9;
-        }).length;
-        
-        habits.push({
-            name: 'Protein Goals',
-            score: Math.round((daysWithGoodProtein / monthData.length) * 100),
-            status: daysWithGoodProtein / monthData.length > 0.8 ? 'strong' : 'developing'
-        });
-        
-        // Consistency habit
-        const daysLogged = monthData.filter(day => day.totalCalories > 0).length;
-        habits.push({
-            name: 'Meal Logging',
-            score: Math.round((daysLogged / monthData.length) * 100),
-            status: daysLogged / monthData.length > 0.8 ? 'strong' : 'developing'
-        });
-        
-        return habits;
-    }
-
-    function analyzeLongTermTrends(monthData) {
-        const trends = [];
-        
-        // Calculate weekly averages for trend analysis
-        const weeks = [];
-        for (let i = 0; i < monthData.length; i += 7) {
-            const week = monthData.slice(i, i + 7);
-            const weeklyAvg = week.reduce((sum, day) => sum + (day.totalCalories || 0), 0) / week.length;
-            weeks.push(weeklyAvg);
-        }
-        
-        if (weeks.length >= 2) {
-            const firstWeek = weeks[0];
-            const lastWeek = weeks[weeks.length - 1];
-            const trend = lastWeek > firstWeek ? 'increasing' : 'decreasing';
-            const change = Math.abs(lastWeek - firstWeek);
-            
-            trends.push({
-                metric: 'Calorie Intake',
-                trend,
-                change: Math.round(change),
-                description: `${trend} by ${Math.round(change)} calories per day`
-            });
-        }
-        
-        return trends;
-    }
-
-    function identifyAchievements(monthData, goals) {
-        const achievements = [];
-        
-        const daysLogged = monthData.filter(day => day.totalCalories > 0).length;
-        if (daysLogged >= 25) {
-            achievements.push('🎯 Consistency Champion - Logged 25+ days');
-        }
-        
-        const perfectDays = monthData.filter(day => {
-            const calorieGoal = goals.calorieGoal || 2000;
-            const proteinGoal = goals.proteinGoal || 100;
-            const caloriesOnTarget = Math.abs((day.totalCalories || 0) - calorieGoal) / calorieGoal <= 0.1;
-            const proteinOnTarget = (day.totalProtein || 0) >= proteinGoal * 0.9;
-            return caloriesOnTarget && proteinOnTarget;
-        }).length;
-        
-        if (perfectDays >= 7) {
-            achievements.push('⭐ Perfect Week - 7+ days hitting all goals');
-        }
-        
-        const streakDays = calculateLongestStreak(monthData);
-        if (streakDays >= 7) {
-            achievements.push(`🔥 ${streakDays}-Day Streak - Consistent logging`);
-        }
-        
-        return achievements;
-    }
-
-    function calculateLongestStreak(monthData) {
-        let currentStreak = 0;
-        let longestStreak = 0;
-        
-        monthData.forEach(day => {
-            if (day.totalCalories > 0) {
-                currentStreak++;
-                longestStreak = Math.max(longestStreak, currentStreak);
-            } else {
-                currentStreak = 0;
-            }
-        });
-        
-        return longestStreak;
-    }
-
-    function generateNextMonthStrategy(monthData, goals) {
-        const strategies = [];
-        
-        // Analyze current performance
-        const daysLogged = monthData.filter(day => day.totalCalories > 0).length;
-        const avgCalories = monthData.reduce((sum, day) => sum + (day.totalCalories || 0), 0) / daysLogged;
-        const avgProtein = monthData.reduce((sum, day) => sum + (day.totalProtein || 0), 0) / daysLogged;
-        
-        if (daysLogged < 20) {
-            strategies.push({
-                area: 'Consistency',
-                goal: 'Log meals 25+ days',
-                action: 'Set daily reminders and use quick-add features'
-            });
-        }
-        
-        if (avgCalories < (goals.calorieGoal || 2000) * 0.9) {
-            strategies.push({
-                area: 'Calorie Intake',
-                goal: 'Reach daily calorie targets',
-                action: 'Add healthy snacks and larger portions'
-            });
-        }
-        
-        if (avgProtein < (goals.proteinGoal || 100) * 0.8) {
-            strategies.push({
-                area: 'Protein Intake',
-                goal: 'Meet daily protein goals',
-                action: 'Include protein with every meal and snack'
-            });
-        }
-        
-        return strategies;
-    }
-
-    // Data fetching functions (simplified for Firebase integration)
-    async function getTodaysNutritionData() {
-        if (!currentUser) return { totalCalories: 0, totalProtein: 0, meals: [] };
-        
-        // Get today's date
-        const today = new Date().toISOString().split('T')[0];
-        
-        try {
-            const docRef = doc(db, 'users', currentUser.uid, 'nutrition', today);
-            const docSnap = await getDoc(docRef);
-            
-            if (docSnap.exists()) {
-                return docSnap.data();
-            } else {
-                return { totalCalories: 0, totalProtein: 0, meals: [] };
-            }
-        } catch (error) {
-            console.error('Error fetching today\'s data:', error);
-            return { totalCalories: 0, totalProtein: 0, meals: [] };
-        }
-    }
-
-    async function getWeeklyNutritionData() {
-        if (!currentUser) return [];
-        
-        const weekData = [];
-        const today = new Date();
-        
-        // Get the last 7 days
-        for (let i = 6; i >= 0; i--) {
-            const date = new Date(today);
-            date.setDate(date.getDate() - i);
-            const dateStr = date.toISOString().split('T')[0];
-            
-            try {
-                const docRef = doc(db, 'users', currentUser.uid, 'nutrition', dateStr);
-                const docSnap = await getDoc(docRef);
-                
-                if (docSnap.exists()) {
-                    weekData.push(docSnap.data());
-                } else {
-                    weekData.push({ totalCalories: 0, totalProtein: 0, meals: [] });
-                }
-            } catch (error) {
-                console.error(`Error fetching data for ${dateStr}:`, error);
-                weekData.push({ totalCalories: 0, totalProtein: 0, meals: [] });
-            }
-        }
-        
-        return weekData;
-    }
-
-    async function getMonthlyNutritionData() {
-        if (!currentUser) return [];
-        
-        const monthData = [];
-        const today = new Date();
-        
-        // Get the last 30 days
-        for (let i = 29; i >= 0; i--) {
-            const date = new Date(today);
-            date.setDate(date.getDate() - i);
-            const dateStr = date.toISOString().split('T')[0];
-            
-            try {
-                const docRef = doc(db, 'users', currentUser.uid, 'nutrition', dateStr);
-                const docSnap = await getDoc(docRef);
-                
-                if (docSnap.exists()) {
-                    monthData.push(docSnap.data());
-                } else {
-                    monthData.push({ totalCalories: 0, totalProtein: 0, meals: [] });
-                }
-            } catch (error) {
-                console.error(`Error fetching data for ${dateStr}:`, error);
-                monthData.push({ totalCalories: 0, totalProtein: 0, meals: [] });
-            }
-        }
-        
-        return monthData;
-    }
-
-    async function getUserGoals() {
-        if (!currentUser) return { calorieGoal: 2000, proteinGoal: 100 };
-        
-        try {
-            const docRef = doc(db, 'users', currentUser.uid);
-            const docSnap = await getDoc(docRef);
-            
-            if (docSnap.exists()) {
-                const userData = docSnap.data();
-                return {
-                    calorieGoal: userData.calorieGoal || 2000,
-                    proteinGoal: userData.proteinGoal || 100
-                };
-            } else {
-                return { calorieGoal: 2000, proteinGoal: 100 };
-            }
-        } catch (error) {
-            console.error('Error fetching user goals:', error);
-            return { calorieGoal: 2000, proteinGoal: 100 };
-        }
-    }
-
-    // Error handling functions
-    function displayDailyInsightsError() {
-        const container = document.getElementById('daily-goal-progress');
-        if (container) {
-            container.innerHTML = '<p class="error-message">Unable to load daily insights. Please try again later.</p>';
-        }
-    }
-
-    function displayWeeklyInsightsError() {
-        const container = document.getElementById('weekly-consistency');
-        if (container) {
-            container.innerHTML = '<p class="error-message">Unable to load weekly insights. Please try again later.</p>';
-        }
-    }
-
-    function displayMonthlyInsightsError() {
-        const container = document.getElementById('monthly-progress');
-        if (container) {
-            container.innerHTML = '<p class="error-message">Unable to load monthly insights. Please try again later.</p>';
-        }
-    }
-
-    // Sample insights fallback function
-    function displaySampleInsights() {
-        console.log('Displaying sample insights as fallback...');
-        
-        // Display sample daily insights
-        displayDailyInsights({
-            goalProgress: {
-                calories: { current: 1850, goal: 2000, percentage: 93 },
-                protein: { current: 95, goal: 100, percentage: 95 },
-                overall: 'On Track',
-                summary: 'Great progress today! You\'re on track with your nutrition goals.'
-            },
-            mealTiming: {
-                lastMeal: '3 hours ago',
-                eatingWindow: '10 hours',
-                frequency: '3 meals',
-                insight: 'Your meal timing looks good! You\'re maintaining a healthy eating pattern.'
-            },
-            smartSuggestions: [
-                { icon: 'utensils', text: 'You have 150 calories remaining for today' },
-                { icon: 'zap', text: 'Add 5g more protein to meet your goal' },
-                { icon: 'droplets', text: 'Stay hydrated - aim for 8 glasses of water today' }
-            ],
-            nextMeal: {
-                type: 'Dinner',
-                recommendedTime: 'Soon',
-                targetCalories: 400,
-                targetProtein: 25,
-                suggestions: [
-                    { food: 'Salmon with Vegetables', reason: 'Omega-3s, lean protein' },
-                    { food: 'Lean Beef Stir-fry', reason: 'Iron, protein, vegetables' }
-                ]
-            }
-        });
-        
-        // Initialize icons
-        if (typeof lucide !== 'undefined') {
-            lucide.createIcons();
-        }
-    }
-
-    async function loadRecommendations() {
-        try {
-            const recentData = await getRecentAnalytics();
-            const bodyMetrics = await getBodyMetrics();
-            const userProfile = await getUserProfile();
-            
-            const response = await fetch('/api/ai-insights/recommendations', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    recentData: recentData,
-                    bodyMetrics: bodyMetrics,
-                    goals: dailyData.goals,
-                    userProfile: userProfile,
-                    preferences: userProfile.preferences || {}
-                })
-            });
-
-            if (response.ok) {
-                const recommendations = await response.json();
-                displayRecommendations(recommendations);
-            }
-        } catch (error) {
-            console.error('Error loading recommendations:', error);
-            displayInsightsError('recommendations-list');
-        }
-    }
-
-    function displayDailyInsights(insights) {
-        const container = document.getElementById('daily-insights-content');
-        if (!container) return;
-
-        container.innerHTML = `
-            <div class="insight-item">
-                <div class="insight-label">Calorie Status</div>
-                <div class="insight-value ${insights.calorieStatus}">${insights.calorieStatus}</div>
-            </div>
-            <div class="insight-item">
-                <div class="insight-label">Protein Status</div>
-                <div class="insight-value ${insights.proteinStatus}">${insights.proteinStatus}</div>
-            </div>
-            <div class="insight-recommendations">
-                <h4>Today's Recommendations</h4>
-                <ul>
-                    ${insights.recommendations.map(rec => `<li>${rec}</li>`).join('')}
-                </ul>
-            </div>
-            <div class="next-meal-suggestion">
-                <h4>Next Meal Suggestion</h4>
-                <p>${insights.nextMealSuggestion}</p>
-            </div>
-        `;
-    }
-
-    function displayWeeklyInsights(insights) {
-        const container = document.getElementById('weekly-insights-content');
-        if (!container) return;
-
-        container.innerHTML = `
-            <div class="insight-summary">
-                <div class="summary-item">
-                    <span class="summary-label">Consistency Score</span>
-                    <span class="summary-value">${insights.consistencyScore}%</span>
-                </div>
-                <div class="summary-item">
-                    <span class="summary-label">Trend</span>
-                    <span class="summary-value">${insights.trendDirection}</span>
-                </div>
-            </div>
-            <div class="weekly-patterns">
-                <h4>Patterns Identified</h4>
-                <ul>
-                    ${insights.patterns.map(pattern => `<li>${pattern}</li>`).join('')}
-                </ul>
-            </div>
-            <div class="weekly-focus">
-                <h4>Next Week Focus</h4>
-                <p>${insights.nextWeekFocus}</p>
-            </div>
-        `;
-    }
-
-    function displayMonthlyInsights(insights) {
-        const container = document.getElementById('monthly-insights-content');
-        if (!container) return;
-
-        container.innerHTML = `
-            <div class="monthly-summary">
-                <div class="summary-score">Overall Progress: ${insights.overallProgress}</div>
-                <div class="goal-alignment">Goal Alignment: ${insights.goalAlignment}</div>
-            </div>
-            <div class="monthly-highlights">
-                <h4>Monthly Highlights</h4>
-                <ul>
-                    ${insights.monthlyHighlights.map(highlight => `<li>${highlight}</li>`).join('')}
-                </ul>
-            </div>
-            <div class="strategy">
-                <h4>Next Month Strategy</h4>
-                <p>${insights.nextMonthStrategy}</p>
-            </div>
-        `;
-    }
-
-    function displayRecommendations(recommendations) {
-        const container = document.getElementById('recommendations-list');
-        if (!container) return;
-
-        // Update food suggestions
-        const proteinSuggestions = document.getElementById('protein-suggestions');
-        const nutrientSuggestions = document.getElementById('nutrient-suggestions');
-        const goalSuggestions = document.getElementById('goal-suggestions');
-
-        if (proteinSuggestions && recommendations.foodSuggestions) {
-            proteinSuggestions.innerHTML = recommendations.foodSuggestions.highProtein.map(food => 
-                `<div class="food-suggestion">${food}</div>`
-            ).join('');
-        }
-
-        if (nutrientSuggestions && recommendations.foodSuggestions) {
-            nutrientSuggestions.innerHTML = recommendations.foodSuggestions.nutrientDense.map(food => 
-                `<div class="food-suggestion">${food}</div>`
-            ).join('');
-        }
-
-        if (goalSuggestions && recommendations.foodSuggestions) {
-            goalSuggestions.innerHTML = recommendations.foodSuggestions.goalAligned.map(food => 
-                `<div class="food-suggestion">${food}</div>`
-            ).join('');
-        }
-
-        // Display main recommendations
-        container.innerHTML = `
-            <div class="macro-recommendations">
-                <h4>Macro Recommendations</h4>
-                <p><strong>Calories:</strong> ${recommendations.macroRecommendations?.calories}</p>
-                <p><strong>Protein:</strong> ${recommendations.macroRecommendations?.protein}</p>
-            </div>
-            <div class="habit-changes">
-                <h4>Suggested Habit Changes</h4>
-                <ul>
-                    ${recommendations.habitChanges?.map(habit => `<li>${habit}</li>`).join('') || '<li>No specific changes recommended</li>'}
-                </ul>
-            </div>
-        `;
-    }
-
-    function displayInsightsError(containerId) {
-        const container = document.getElementById(containerId);
-        if (container) {
-            container.innerHTML = `
-                <div class="insight-error">
-                    <i data-lucide="alert-circle"></i>
-                    <p>Unable to load insights. Please try again later.</p>
-                </div>
-            `;
-        }
-    }
-
-    function setupAIInsightsEventListeners() {
-        const refreshInsightsBtn = document.getElementById('refresh-insights-btn');
-        if (refreshInsightsBtn) {
-            refreshInsightsBtn.addEventListener('click', async () => {
-                refreshInsightsBtn.disabled = true;
-                refreshInsightsBtn.innerHTML = '<i data-lucide="loader"></i> Refreshing...';
-                
-                await loadAIInsights();
-                
-                refreshInsightsBtn.disabled = false;
-                refreshInsightsBtn.innerHTML = '<i data-lucide="refresh-cw"></i> Refresh Insights';
-            });
-        }
-    }
-
-    // Helper functions for AI insights
-    async function getUserProfile() {
-        if (!currentUser) return {};
-        
-        try {
-            const profileRef = window.firebaseDb.doc(window.firebaseDb.db, 'users', currentUser.uid, 'profile', 'data');
-            const profileDoc = await window.firebaseDb.getDoc(profileRef);
-            return profileDoc.exists() ? profileDoc.data() : {};
-        } catch (error) {
-            console.error('Error getting user profile:', error);
-            return {};
-        }
-    }
-
-    async function getWeeklyNutritionData() {
-        const history = await getNutritionHistory(7);
-        return Object.values(history);
-    }
-
-    async function getBodyMetrics() {
-        if (!currentUser) return {};
-        
-        try {
-            const metricsRef = window.firebaseDb.doc(window.firebaseDb.db, 'users', currentUser.uid, 'bodyMetrics', 'current');
-            const metricsDoc = await window.firebaseDb.getDoc(metricsRef);
-            return metricsDoc.exists() ? metricsDoc.data() : {};
-        } catch (error) {
-            console.error('Error getting body metrics:', error);
-            return {};
-        }
-    }
-
-    async function getRecentAnalytics() {
-        const history = await getNutritionHistory(7);
-        const days = Object.values(history);
-        
-        if (days.length === 0) return {};
-        
-        const avgCalories = days.reduce((sum, day) => sum + (day.totals?.calories || 0), 0) / days.length;
-        const avgProtein = days.reduce((sum, day) => sum + (day.totals?.protein || 0), 0) / days.length;
-        
-        return {
-            avgCalories: Math.round(avgCalories),
-            avgProtein: Math.round(avgProtein),
-            daysLogged: days.length
-        };
-    }
-
-    // Event handler functions for new features
-    function handleLogMetrics() {
-        const weight = document.getElementById('weight-input')?.value;
-        const height = document.getElementById('height-input')?.value;
-        const bodyFat = document.getElementById('body-fat-input')?.value;
-        
-        if (weight) {
-            updateElement('#current-weight', weight + ' kg');
-            showNotification('Weight logged successfully!');
-        }
-        if (height) {
-            updateElement('#current-height', height + ' cm');
-            showNotification('Height updated successfully!');
-        }
-        if (bodyFat) {
-            updateElement('#current-body-fat', bodyFat + '%');
-            showNotification('Body fat updated successfully!');
-        }
-        
-        // Clear inputs
-        if (document.getElementById('weight-input')) document.getElementById('weight-input').value = '';
-        if (document.getElementById('height-input')) document.getElementById('height-input').value = '';
-        if (document.getElementById('body-fat-input')) document.getElementById('body-fat-input').value = '';
-    }
-
-    // Body Metrics inline editing functions
-    function toggleEditForm(metric) {
-        const editForm = document.getElementById(`${metric}-edit-form`);
-        const statDisplay = document.querySelector(`.${metric}-card .stat-display`);
-        
-        if (editForm && statDisplay) {
-            editForm.classList.toggle('hidden');
-            
-            // If showing edit form, populate with current value and hide stat display
-            if (!editForm.classList.contains('hidden')) {
-                const currentElement = document.getElementById(`current-${metric}`);
-                const input = document.getElementById(`${metric}-input`);
-                if (input && currentElement) {
-                    const currentValue = currentElement.textContent || '';
-                    input.value = parseFloat(currentValue) || '';
-                    input.focus();
-                }
-                statDisplay.style.opacity = '0.3';
-            } else {
-                statDisplay.style.opacity = '1';
-            }
-        }
-    }
-
-    async function saveMetric(metric) {
-        const input = document.getElementById(`${metric}-input`);
-        const value = parseFloat(input.value);
-        
-        if (!value || value <= 0) {
-            showNotification('Please enter a valid value', 'error');
-            return;
-        }
-
-        try {
-            // Update display
-            const currentValueElement = document.getElementById(`current-${metric}`);
-            if (currentValueElement) {
-                currentValueElement.textContent = value.toFixed(metric === 'height' ? 0 : 1);
-            }
-
-            // Update date
-            const dateElement = document.getElementById(`${metric}-date`);
-            if (dateElement) {
-                dateElement.textContent = `Last updated: ${new Date().toLocaleDateString()}`;
-            }
-
-            // Calculate and update BMI if weight or height changed
-            if (metric === 'weight' || metric === 'height') {
-                updateBMI();
-            }
-
-            // Save to Firestore
-            await saveBodyMetricToFirestore(metric, value);
-
-            // Hide edit form and show stat display
-            cancelEdit(metric);
-            
-            showNotification(`${metric.charAt(0).toUpperCase() + metric.slice(1)} updated successfully!`);
-        } catch (error) {
-            console.error('Error saving metric:', error);
-            showNotification('Error saving data', 'error');
-        }
-    }
-
-    function cancelEdit(metric) {
-        const editForm = document.getElementById(`${metric}-edit-form`);
-        const statDisplay = document.querySelector(`.${metric}-card .stat-display`);
-        
-        if (editForm && statDisplay) {
-            editForm.classList.add('hidden');
-            statDisplay.style.opacity = '1';
-        }
-    }
-
-    function updateBMI() {
-        const weightElement = document.getElementById('current-weight');
-        const heightElement = document.getElementById('current-height');
-        const bmiElement = document.getElementById('current-bmi');
-        const categoryElement = document.getElementById('bmi-category');
-        
-        if (weightElement && heightElement && bmiElement && categoryElement) {
-            const weight = parseFloat(weightElement.textContent);
-            const height = parseFloat(heightElement.textContent);
-            
-            if (weight > 0 && height > 0) {
-                const heightInMeters = height / 100;
-                const bmi = weight / (heightInMeters * heightInMeters);
-                
-                bmiElement.textContent = bmi.toFixed(1);
-                
-                // Update category
-                let category, categoryClass;
-                if (bmi < 18.5) {
-                    category = 'Underweight';
-                    categoryClass = 'underweight';
-                } else if (bmi < 25) {
-                    category = 'Normal Weight';
-                    categoryClass = 'normal';
-                } else if (bmi < 30) {
-                    category = 'Overweight';
-                    categoryClass = 'overweight';
-                } else {
-                    category = 'Obese';
-                    categoryClass = 'obese';
-                }
-                
-                categoryElement.textContent = category;
-                categoryElement.setAttribute('data-category', categoryClass);
-            }
-        }
-    }
-
-    async function saveBodyMetricToFirestore(metric, value) {
-        if (!currentUser) {
-            console.log('❌ No current user for saving body metrics');
-            return;
-        }
-        
-        try {
-            console.log(`💾 Saving ${metric}: ${value} for user:`, currentUser.uid);
-            const timestamp = new Date();
-            
-            // Save current metrics using the correct Firestore syntax
-            const userDocRef = window.firebaseDb.doc(window.firebaseDb.db, 'users', currentUser.uid);
-            const currentMetricsRef = window.firebaseDb.doc(window.firebaseDb.db, 'users', currentUser.uid, 'bodyMetrics', 'current');
-            
-            await window.firebaseDb.setDoc(currentMetricsRef, {
-                [metric]: value,
-                [`${metric}UpdatedAt`]: timestamp,
-                lastUpdated: timestamp
-            }, { merge: true });
-            
-            console.log(`✅ Current ${metric} saved to Firestore`);
-            
-            // Save to history for analytics using date as document ID
-            const dateKey = timestamp.toISOString().split('T')[0]; // Format: YYYY-MM-DD
-            const historyDocRef = window.firebaseDb.doc(window.firebaseDb.db, 'users', currentUser.uid, 'bodyHistory', dateKey);
-            
-            await window.firebaseDb.setDoc(historyDocRef, {
-                [metric]: value,
-                timestamp: timestamp,
-                date: dateKey
-            }, { merge: true });
-            
-            console.log(`✅ ${metric} history saved to Firestore for date:`, dateKey);
-            
-        } catch (error) {
-            console.error(`❌ Error saving ${metric} to Firestore:`, error);
-            console.error('Error details:', error.code, error.message);
-            throw error;
-        }
-    }
-
-    // Weight Analytics Functions
-    async function loadWeightAnalytics() {
-        console.log('📊 loadWeightAnalytics called, currentUser:', !!currentUser);
-        
-        if (!currentUser) {
-            console.log('❌ No current user for weight analytics - showing empty state');
-            showEmptyWeightState();
-            return;
-        }
-        
-        try {
-            const timeframeSelect = document.getElementById('weight-timeframe');
-            const days = parseInt(timeframeSelect?.value || '90');
-            
-            console.log(`📊 Loading weight analytics for ${days} days...`);
-            
-            const weightData = await getWeightHistory(days);
-            
-            if (weightData.length === 0) {
-                console.log('📊 No weight data found in Firebase - showing empty state');
-                showEmptyWeightState();
-            } else {
-                console.log(`📊 Rendering chart with ${weightData.length} data points`);
-                renderWeightChart(weightData);
-                updateWeightStats(weightData);
-            }
-            
-        } catch (error) {
-            console.error('❌ Error loading weight analytics:', error);
-            showNotification('Error loading weight data', 'error');
-            showEmptyWeightState();
-        }
-    }
-
-    function showEmptyWeightState() {
-        console.log('📊 Showing empty weight state');
-        
-        const canvas = document.getElementById('weight-trajectory-chart');
-        if (!canvas) return;
-        
-        const ctx = canvas.getContext('2d');
-        
-        // Clear canvas
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        // Draw empty state message
-        ctx.fillStyle = '#64748b';
-        ctx.font = 'bold 20px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('No Weight Data Available', canvas.width / 2, canvas.height / 2 - 20);
-        
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = '16px sans-serif';
-        ctx.fillText('Start logging your weight to see analytics here', canvas.width / 2, canvas.height / 2 + 10);
-        
-        // Update stats to show empty state
-        updateElement('weight-change', '--');
-        updateElement('weight-trend', '--');
-        updateElement('avg-weekly-change', '--');
-        updateElement('entries-count', '0');
-    }
-
-    function showSampleWeightData() {
-        console.log('📊 Showing sample weight data');
-        
-        // Check if we're in the Body Metrics tab
-        const bodyMetricsContent = document.getElementById('body-metrics-content');
-        console.log('📊 Body Metrics tab visible:', bodyMetricsContent && bodyMetricsContent.style.display !== 'none');
-        
-        // If not in body metrics tab, switch to it
-        if (!bodyMetricsContent || bodyMetricsContent.style.display === 'none') {
-            console.log('📊 Switching to Body Metrics tab...');
-            switchSidebarTab('body-metrics');
-            // Add a small delay to ensure DOM is rendered
-            setTimeout(() => {
-                renderSampleChart();
-            }, 200);
-        } else {
-            renderSampleChart();
-        }
-        
-        function renderSampleChart() {
-            // Generate sample data for the last 30 days
-            const sampleData = [];
-            const today = new Date();
-        
-        for (let i = 29; i >= 0; i--) {
-            const date = new Date();
-            date.setDate(today.getDate() - i);
-            
-            // Generate realistic weight fluctuation around 75kg
-            const baseWeight = 75;
-            const variation = (Math.random() - 0.5) * 3; // ±1.5kg variation
-            const weight = baseWeight + variation + (i * 0.05); // Slight upward trend
-            
-            sampleData.push({
-                date: date,
-                weight: Math.round(weight * 10) / 10 // Round to 1 decimal
-            });
-        }
-        
-        console.log('📊 Generated sample data:', sampleData.length, 'points');
-        renderWeightChart(sampleData);
-        updateWeightStats(sampleData);
-        }
-    }
-
-    async function getWeightHistory(days) {
-        if (!currentUser) {
-            console.log('❌ No current user for weight history');
-            return [];
-        }
-        
-        try {
-            console.log(`📊 Fetching weight history for last ${days} days`);
-            const endDate = new Date();
-            const startDate = new Date();
-            startDate.setDate(startDate.getDate() - days);
-            
-            // Use the correct collection path for subcollection
-            const userDocRef = window.firebaseDb.doc(window.firebaseDb.db, 'users', currentUser.uid);
-            const historyCollectionRef = window.firebaseDb.collection(userDocRef, 'bodyHistory');
-            
-            console.log('🔍 Querying bodyHistory collection...');
-            console.log('🔍 Collection path: users/' + currentUser.uid + '/bodyHistory');
-            const querySnapshot = await window.firebaseDb.getDocs(historyCollectionRef);
-            console.log('🔍 Query snapshot size:', querySnapshot.size);
-            const weightEntries = [];
-            
-            querySnapshot.forEach((doc) => {
-                const data = doc.data();
-                console.log('📄 Document ID:', doc.id, 'Data:', data);
-                
-                if (data.weight && data.timestamp) {
-                    console.log('✅ Found weight entry:', data.weight, 'on', data.timestamp);
-                    // Handle both Firestore timestamp and regular Date
-                    let date;
-                    if (data.timestamp.toDate) {
-                        date = data.timestamp.toDate();
-                    } else if (data.timestamp instanceof Date) {
-                        date = data.timestamp;
-                    } else {
-                        date = new Date(data.timestamp);
-                    }
-                    
-                    if (date >= startDate && date <= endDate) {
-                        weightEntries.push({
-                            date: date,
-                            weight: data.weight,
-                            docId: doc.id
-                        });
-                    }
-                }
-            });
-            
-            console.log(`📈 Found ${weightEntries.length} weight entries`);
-            
-            // Sort by date
-            weightEntries.sort((a, b) => a.date - b.date);
-            return weightEntries;
-            
-        } catch (error) {
-            console.error('❌ Error fetching weight history:', error);
-            console.error('Error details:', error.code, error.message);
-            return [];
-        }
-    }
-
-    function renderWeightChart(data) {
-        console.log('🎨 Rendering weight chart with data:', data);
-        const canvas = document.getElementById('weight-trajectory-chart');
-        console.log('🎨 Canvas element found:', !!canvas);
-        
-        if (!canvas) {
-            console.error('❌ Canvas element not found');
-            return;
-        }
-        
-        console.log('🎨 Canvas dimensions:', canvas.width, 'x', canvas.height);
-        console.log('🎨 Canvas visible:', canvas.offsetWidth, 'x', canvas.offsetHeight);
-        
-        if (data.length === 0) {
-            console.log('📊 No data to render');
-            return;
-        }
-        
-        const ctx = canvas.getContext('2d');
-        
-        // Clear canvas
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        
-        // Test drawing - draw a simple rectangle to verify canvas is working
-        ctx.fillStyle = '#3b82f6';
-        ctx.fillRect(10, 10, 50, 50);
-        console.log('🎨 Test rectangle drawn');
-        
-        if (data.length === 0) {
-            ctx.fillStyle = '#64748b';
-            ctx.font = '16px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText('No weight data available', canvas.width / 2, canvas.height / 2);
-            return;
-        }
-        
-        // Chart dimensions
-        const padding = 60;
-        const chartWidth = canvas.width - 2 * padding;
-        const chartHeight = canvas.height - 2 * padding;
-        
-        // Find min and max values
-        const weights = data.map(d => d.weight);
-        const minWeight = Math.min(...weights) - 1;
-        const maxWeight = Math.max(...weights) + 1;
-        const weightRange = maxWeight - minWeight;
-        
-        // Draw axes
-        ctx.strokeStyle = '#e2e8f0';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(padding, padding);
-        ctx.lineTo(padding, padding + chartHeight);
-        ctx.lineTo(padding + chartWidth, padding + chartHeight);
-        ctx.stroke();
-        
-        // Draw grid lines
-        ctx.strokeStyle = '#f1f5f9';
-        ctx.lineWidth = 1;
-        for (let i = 1; i < 5; i++) {
-            const y = padding + (chartHeight * i) / 5;
-            ctx.beginPath();
-            ctx.moveTo(padding, y);
-            ctx.lineTo(padding + chartWidth, y);
-            ctx.stroke();
-        }
-        
-        // Draw weight line
-        if (data.length > 1) {
-            ctx.strokeStyle = '#3b82f6';
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            
-            data.forEach((point, index) => {
-                const x = padding + (chartWidth * index) / (data.length - 1);
-                const y = padding + chartHeight - ((point.weight - minWeight) / weightRange) * chartHeight;
-                
-                if (index === 0) {
-                    ctx.moveTo(x, y);
-                } else {
-                    ctx.lineTo(x, y);
-                }
-            });
-            
-            ctx.stroke();
-        }
-        
-        // Draw data points
-        ctx.fillStyle = '#3b82f6';
-        data.forEach((point, index) => {
-            const x = padding + (chartWidth * index) / Math.max(data.length - 1, 1);
-            const y = padding + chartHeight - ((point.weight - minWeight) / weightRange) * chartHeight;
-            
-            ctx.beginPath();
-            ctx.arc(x, y, 4, 0, 2 * Math.PI);
-            ctx.fill();
-        });
-        
-        // Draw labels
-        ctx.fillStyle = '#64748b';
-        ctx.font = '12px sans-serif';
-        ctx.textAlign = 'center';
-        
-        // Date labels (show first, middle, last)
-        if (data.length > 0) {
-            const firstDate = data[0].date.toLocaleDateString();
-            const lastDate = data[data.length - 1].date.toLocaleDateString();
-            
-            ctx.fillText(firstDate, padding, canvas.height - 20);
-            ctx.fillText(lastDate, padding + chartWidth, canvas.height - 20);
-        }
-        
-        // Weight labels
-        ctx.textAlign = 'right';
-        ctx.fillText(maxWeight.toFixed(1) + ' kg', padding - 10, padding + 5);
-        ctx.fillText(minWeight.toFixed(1) + ' kg', padding - 10, padding + chartHeight + 5);
-    }
-
-    function updateWeightStats(data) {
-        if (data.length === 0) {
-            document.getElementById('weight-change').textContent = '--';
-            document.getElementById('weight-trend').textContent = '--';
-            document.getElementById('avg-weekly-change').textContent = '--';
-            document.getElementById('entries-count').textContent = '0';
-            return;
-        }
-        
-        const firstWeight = data[0].weight;
-        const lastWeight = data[data.length - 1].weight;
-        const totalChange = lastWeight - firstWeight;
-        
-        // Update total change
-        const changeElement = document.getElementById('weight-change');
-        changeElement.textContent = (totalChange >= 0 ? '+' : '') + totalChange.toFixed(1) + ' kg';
-        changeElement.className = 'stat-value ' + (totalChange > 0 ? 'positive' : totalChange < 0 ? 'negative' : 'stable');
-        
-        // Update trend
-        const trendElement = document.getElementById('weight-trend');
-        if (Math.abs(totalChange) < 0.5) {
-            trendElement.textContent = 'Stable';
-            trendElement.className = 'stat-value stable';
-        } else if (totalChange > 0) {
-            trendElement.textContent = 'Increasing';
-            trendElement.className = 'stat-value positive';
-        } else {
-            trendElement.textContent = 'Decreasing';
-            trendElement.className = 'stat-value negative';
-        }
-        
-        // Calculate average weekly change
-        const days = (data[data.length - 1].date - data[0].date) / (1000 * 60 * 60 * 24);
-        const weeks = days / 7;
-        const avgWeeklyChange = weeks > 0 ? totalChange / weeks : 0;
-        
-        const weeklyElement = document.getElementById('avg-weekly-change');
-        weeklyElement.textContent = (avgWeeklyChange >= 0 ? '+' : '') + avgWeeklyChange.toFixed(2) + ' kg/wk';
-        weeklyElement.className = 'stat-value ' + (avgWeeklyChange > 0 ? 'positive' : avgWeeklyChange < 0 ? 'negative' : 'stable');
-        
-        // Update entries count
-        document.getElementById('entries-count').textContent = data.length.toString();
-    }
-
-    // Initialize sample weight data for testing
-    async function createSampleWeightData() {
-        if (!currentUser) return;
-        
-        try {
-            console.log('🔧 Creating sample weight data...');
-            
-            const today = new Date();
-            const sampleEntries = [
-                { daysAgo: 30, weight: 72.5 },
-                { daysAgo: 25, weight: 72.8 },
-                { daysAgo: 20, weight: 73.1 },
-                { daysAgo: 15, weight: 73.0 },
-                { daysAgo: 10, weight: 72.7 },
-                { daysAgo: 5, weight: 72.3 },
-                { daysAgo: 0, weight: 72.0 }
-            ];
-            
-            for (const entry of sampleEntries) {
-                const date = new Date();
-                date.setDate(today.getDate() - entry.daysAgo);
-                
-                const dateKey = date.toISOString().split('T')[0];
-                const historyDocRef = window.firebaseDb.doc(window.firebaseDb.db, 'users', currentUser.uid, 'bodyHistory', dateKey);
-                
-                await window.firebaseDb.setDoc(historyDocRef, {
-                    weight: entry.weight,
-                    timestamp: date,
-                    date: dateKey
-                }, { merge: true });
-            }
-            
-            console.log('✅ Sample weight data created');
-            showNotification('Sample data created! Check the History tab.');
-            
-        } catch (error) {
-            console.error('❌ Error creating sample data:', error);
-        }
-    }
-
-    // Expose function for testing
-    window.createSampleWeightData = createSampleWeightData;
-
-    function handleUpdateGoals() {
-        const goalWeight = document.getElementById('goal-weight')?.value;
-        const activityLevel = document.getElementById('activity-level')?.value;
-        const timeframe = document.getElementById('timeframe')?.value;
-        
-        if (goalWeight) {
-            updateElement('#weight-goal-display', goalWeight + ' kg');
-            showNotification('Weight goal updated!');
-        }
-        if (activityLevel) {
-            updateElement('#activity-goal-display', activityLevel);
-            showNotification('Activity level updated!');
-        }
-        if (timeframe) {
-            updateElement('#timeframe-display', timeframe);
-            showNotification('Timeframe updated!');
-        }
-    }
-
-    function handleLogActivity() {
-        const activity = document.getElementById('activity-type')?.value;
-        const duration = document.getElementById('activity-duration')?.value;
-        
-        if (activity && duration) {
-            const activityList = document.querySelector('.activity-log');
-            if (activityList) {
-                const newActivity = document.createElement('div');
-                newActivity.className = 'activity-entry';
-                newActivity.innerHTML = `
-                    <span>${activity}</span>
-                    <span>${duration} minutes</span>
-                    <span>${new Date().toLocaleDateString()}</span>
-                `;
-                activityList.prepend(newActivity);
-            }
-            showNotification(`${activity} logged for ${duration} minutes!`);
-            
-            // Clear inputs
-            document.getElementById('activity-type').value = '';
-            document.getElementById('activity-duration').value = '';
-        }
-    }
-
-    function handleRefreshInsights() {
-        const loadingElement = document.querySelector('.loading-insights');
-        if (loadingElement) {
-            loadingElement.style.display = 'block';
-            setTimeout(() => {
-                loadingElement.style.display = 'none';
-                displaySampleInsights();
-                showNotification('Insights refreshed!');
-            }, 2000);
         }
     }
 
@@ -7708,14 +6702,14 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('🔍 Debug: Checking page functionality...');
         
         // Check if all tab content areas exist
-        const contentAreas = ['dashboard-content', 'analytics-content', 'body-metrics-content', 'goals-content', 'ai-insights-content', 'history-content', 'profile-content'];
+        const contentAreas = ['dashboard-content', 'analytics-content', 'body-metrics-content', 'goals-content', 'history-content', 'profile-content'];
         contentAreas.forEach(id => {
             const element = document.getElementById(id);
             console.log(`🔍 ${id}: ${element ? '✅ Found' : '❌ Missing'}`);
         });
         
         // Check if sidebar items exist
-        const sidebarItems = ['sidebar-dashboard', 'sidebar-analytics', 'sidebar-body-metrics', 'sidebar-goals', 'sidebar-ai-insights', 'sidebar-history', 'sidebar-profile'];
+        const sidebarItems = ['sidebar-dashboard', 'sidebar-analytics', 'sidebar-insights', 'sidebar-body-metrics', 'sidebar-goals', 'sidebar-history', 'sidebar-profile'];
         sidebarItems.forEach(id => {
             const element = document.getElementById(id);
             console.log(`🔍 ${id}: ${element ? '✅ Found' : '❌ Missing'}`);
@@ -7728,4 +6722,82 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('load', () => {
         setTimeout(debugPageFunctionality, 1000);
     });
-});
+
+    // === INSIGHTS REFRESH FUNCTIONALITY ===
+    // Add insights refresh button functionality
+    const refreshInsightsBtn = document.getElementById('refresh-insights-btn');
+    if (refreshInsightsBtn) {
+        refreshInsightsBtn.addEventListener('click', async () => {
+            console.log('🔄 Refreshing insights...');
+            const activeTimeframe = document.querySelector('#insights-content .time-btn.active')?.dataset.timeframe || 'daily';
+            await loadInsightsData(activeTimeframe);
+            console.log('✅ Insights refreshed');
+        });
+    }
+    
+    const exportInsightsBtn = document.getElementById('export-insights-btn');
+    if (exportInsightsBtn) {
+        exportInsightsBtn.addEventListener('click', () => {
+            console.log('📤 Exporting insights...');
+            exportInsightsData();
+        });
+    }
+
+}); // End of DOMContentLoaded event listener
+
+// === GLOBAL INSIGHTS FUNCTIONS ===
+function exportInsightsData() {
+    try {
+        const activeTimeframe = document.querySelector('#insights-content .time-btn.active')?.dataset.timeframe || 'daily';
+        const activeView = document.getElementById(`${activeTimeframe}-insights`);
+        
+        if (!activeView) return;
+        
+        // Create export data
+        const exportData = {
+            timestamp: new Date().toISOString(),
+            timeframe: activeTimeframe,
+            insights: extractInsightsText(activeView)
+        };
+        
+        // Create and download file
+        const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `nutritrack-insights-${activeTimeframe}-${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        console.log('✅ Insights exported successfully');
+    } catch (error) {
+        console.error('❌ Error exporting insights:', error);
+    }
+}
+
+function extractInsightsText(view) {
+    const insights = {};
+    
+    // Extract main insight text
+    const insightText = view.querySelector('.insight-text');
+    if (insightText) {
+        insights.mainInsight = insightText.textContent;
+    }
+    
+    // Extract recommendations
+    const recommendations = view.querySelectorAll('.recommendation-item span, .week-rec-item p, .strategy-item p');
+    insights.recommendations = Array.from(recommendations).map(el => el.textContent);
+    
+    return insights;
+}
+
+// Make functions available globally
+window.loadInsightsData = loadInsightsData;
+window.debugInsights = function() {
+    console.log('=== INSIGHTS DEBUG ===');
+    console.log('Current user:', currentUser);
+    console.log('Daily data:', dailyData);
+    console.log('Current section:', window.currentSection);
+};

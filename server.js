@@ -137,6 +137,8 @@ function base64ToGenerativePart(base64Image) {
  * A robust function to parse JSON from the model's text response.
  */
 function parseJsonResponse(text) {
+    console.log('🔍 Raw API response:', text?.substring(0, 200) + '...');
+    
     // Remove any markdown code blocks
     let cleanText = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
     
@@ -156,10 +158,17 @@ function parseJsonResponse(text) {
         try {
             return JSON.parse(cleanText);
         } catch (e) {
+            console.log('❌ Failed to parse JSON from response:', cleanText?.substring(0, 500));
             throw new Error("No valid JSON found in response");
         }
     }
-    return JSON.parse(jsonString);
+    
+    try {
+        return JSON.parse(jsonString);
+    } catch (e) {
+        console.log('❌ Failed to parse extracted JSON:', jsonString?.substring(0, 500));
+        throw new Error("Invalid JSON structure in response");
+    }
 }
 
 
@@ -239,11 +248,40 @@ Provide insights as JSON:
 
 Keep recommendations specific and actionable. Focus on helping achieve their goals.`;
 
-    const result = await retryWithBackoff(() => model.generateContent([prompt]), 3, 500);
-    const text = result.response.text();
-    console.log('Daily Insights Response:', text);
+    try {
+      const result = await retryWithBackoff(() => model.generateContent([prompt]), 3, 500);
+      const text = result.response.text();
+      console.log('Daily Insights Response:', text);
 
-    res.json(parseJsonResponse(text));
+      const insights = parseJsonResponse(text);
+      res.json(insights);
+    } catch (parseError) {
+      console.log('⚠️ AI response parsing failed, providing fallback insights');
+      
+      // Generate fallback insights based on the data
+      const calorieGoal = goals?.calories || 2000;
+      const currentCalories = todayData.totals?.calories || 0;
+      const proteinGoal = goals?.protein || 120;
+      const currentProtein = todayData.totals?.protein || 0;
+      
+      const fallbackInsights = {
+        calorieStatus: currentCalories < calorieGoal * 0.8 ? 'under' : 
+                     currentCalories > calorieGoal * 1.2 ? 'over' : 'on-track',
+        proteinStatus: currentProtein >= proteinGoal * 0.9 ? 'excellent' :
+                      currentProtein >= proteinGoal * 0.7 ? 'good' : 'needs-improvement',
+        mealTiming: `You've logged ${Object.keys(todayData.meals || {}).filter(meal => todayData.meals[meal]?.length > 0).length} meals today.`,
+        nutritionBalance: 'Focus on getting a balance of protein, carbs, and healthy fats in each meal.',
+        recommendations: [
+          'Track your meals consistently for better insights',
+          'Aim for balanced macronutrients throughout the day',
+          'Stay hydrated and eat regular meals'
+        ],
+        nextMealSuggestion: 'Try including a lean protein source with vegetables and complex carbs.',
+        healthScore: Math.min(100, Math.max(20, Math.round((currentCalories / calorieGoal) * 50 + (currentProtein / proteinGoal) * 30 + 20)))
+      };
+      
+      res.json(fallbackInsights);
+    }
   } catch (error) {
     console.error('Error in daily insights:', error);
     res.status(500).json({ error: 'Failed to generate daily insights' });
@@ -299,11 +337,34 @@ Provide analysis as JSON:
   "motivationalMessage": "encouraging_message"
 }`;
 
-    const result = await retryWithBackoff(() => model.generateContent([prompt]), 3, 500);
-    const text = result.response.text();
-    console.log('Weekly Analysis Response:', text);
+    try {
+      const result = await retryWithBackoff(() => model.generateContent([prompt]), 3, 500);
+      const text = result.response.text();
+      console.log('Weekly Analysis Response:', text);
 
-    res.json(parseJsonResponse(text));
+      const insights = parseJsonResponse(text);
+      res.json(insights);
+    } catch (parseError) {
+      console.log('⚠️ Weekly AI response parsing failed, providing fallback insights');
+      
+      const consistencyScore = Math.round((daysOnTrack / totalDays) * 100);
+      const avgCalorieGoal = goals?.calories || 2000;
+      const isImproving = avgCalories >= avgCalorieGoal * 0.8;
+      
+      const fallbackInsights = {
+        consistencyScore: consistencyScore,
+        trendDirection: isImproving ? 'improving' : 'needs-work',
+        strongestDay: weeklyData.length > 0 ? `Day ${weeklyData.findIndex(d => (d.totals?.calories || 0) === Math.max(...weeklyData.map(d => d.totals?.calories || 0))) + 1}` : 'Day 1',
+        weakestDay: weeklyData.length > 0 ? `Day ${weeklyData.findIndex(d => (d.totals?.calories || 0) === Math.min(...weeklyData.map(d => d.totals?.calories || 0))) + 1}` : 'Day 1',
+        patterns: ['Tracking patterns will become clearer with more data'],
+        weeklyGoalStatus: consistencyScore >= 80 ? 'excellent' : consistencyScore >= 60 ? 'good' : 'needs-work',
+        improvementAreas: ['Maintain consistent daily tracking', 'Focus on meeting calorie goals'],
+        nextWeekFocus: 'Aim for more consistent daily nutrition tracking',
+        motivationalMessage: `You tracked ${totalDays} days this week! Keep building this healthy habit.`
+      };
+      
+      res.json(fallbackInsights);
+    }
   } catch (error) {
     console.error('Error in weekly analysis:', error);
     res.status(500).json({ error: 'Failed to generate weekly analysis' });
@@ -358,11 +419,41 @@ Provide comprehensive analysis as JSON:
   "motivationBoost": "encouraging_long_term_perspective"
 }`;
 
-    const result = await retryWithBackoff(() => model.generateContent([prompt]), 3, 500);
-    const text = result.response.text();
-    console.log('Monthly Trends Response:', text);
+    try {
+      const result = await retryWithBackoff(() => model.generateContent([prompt]), 3, 500);
+      const text = result.response.text();
+      console.log('Monthly Trends Response:', text);
 
-    res.json(parseJsonResponse(text));
+      const insights = parseJsonResponse(text);
+      res.json(insights);
+    } catch (parseError) {
+      console.log('⚠️ Monthly AI response parsing failed, providing fallback insights');
+      
+      const avgCalorieGoal = goals?.calories || 2000;
+      const calorieConsistency = Math.round((avgDaily / avgCalorieGoal) * 100);
+      const trackingConsistency = Math.round((totalDays / 30) * 100);
+      
+      const fallbackInsights = {
+        overallProgress: trackingConsistency >= 80 ? 'good' : trackingConsistency >= 60 ? 'fair' : 'needs-improvement',
+        calorieConsistency: Math.min(100, calorieConsistency),
+        goalAlignment: Math.abs(avgDaily - avgCalorieGoal) <= avgCalorieGoal * 0.1 ? 'on-track' : 'slightly-off',
+        weightTrendAnalysis: `Your weight trend is ${weightTrend} with a ${Math.abs(weightChange)}kg change this month.`,
+        nutritionQuality: 'Continue focusing on balanced, nutritious meals',
+        longestStreak: Math.min(totalDays, 7),
+        monthlyHighlights: [
+          `Tracked nutrition for ${totalDays} days this month`,
+          `Maintained an average of ${Math.round(avgDaily)} calories daily`
+        ],
+        areasForImprovement: [
+          'Increase tracking consistency',
+          'Focus on meeting daily nutrition goals'
+        ],
+        nextMonthStrategy: 'Aim for more consistent daily tracking and balanced nutrition',
+        motivationBoost: `You've made great progress tracking ${totalDays} days this month! Consistency is key to reaching your goals.`
+      };
+      
+      res.json(fallbackInsights);
+    }
   } catch (error) {
     console.error('Error in monthly trends:', error);
     res.status(500).json({ error: 'Failed to generate monthly trends' });
