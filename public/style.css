@@ -538,6 +538,120 @@ h4 { font-size: var(--font-size-xl); }
     background: var(--background-color);
 }
 
+/* NUCLEAR FIX: COMPLETELY ELIMINATE ALL AI INSIGHTS CONTENT WHEN NOT ACTIVE */
+#ai-insights-content {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    position: absolute !important;
+    left: -9999px !important;
+    top: -9999px !important;
+    width: 0 !important;
+    height: 0 !important;
+}
+
+#ai-insights-content.active {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    position: relative !important;
+    left: auto !important;
+    top: auto !important;
+    width: auto !important;
+    height: auto !important;
+}
+
+/* COMPLETELY ELIMINATE ALL AI INSIGHTS SPECIFIC COMPONENTS GLOBALLY */
+.insights-grid,
+.insight-card,
+.insight-history,
+.insight-timeline,
+.insights-view,
+.timeframe-selector,
+.insights-header,
+.insight-analytics-card,
+.recommendation-list,
+.score-breakdown,
+.suggestion-categories,
+.food-list,
+.insight-badge,
+.score-item,
+.score-bar,
+.score-fill,
+.score-number,
+.score-label,
+.score-value,
+.health-score,
+.food-suggestions,
+.suggestion-category,
+.achievement-stat,
+.stat-label,
+.stat-value {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    position: absolute !important;
+    left: -9999px !important;
+    top: -9999px !important;
+    width: 0 !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    background: none !important;
+    z-index: -9999 !important;
+}
+
+/* Only show when AI Insights content area is active */
+#ai-insights-content.active .insights-grid,
+#ai-insights-content.active .insight-card,
+#ai-insights-content.active .insight-history,
+#ai-insights-content.active .insight-timeline,
+#ai-insights-content.active .insights-view,
+#ai-insights-content.active .timeframe-selector,
+#ai-insights-content.active .insights-header,
+#ai-insights-content.active .insight-analytics-card,
+#ai-insights-content.active .recommendation-list,
+#ai-insights-content.active .score-breakdown,
+#ai-insights-content.active .suggestion-categories,
+#ai-insights-content.active .food-list,
+#ai-insights-content.active .insight-badge,
+#ai-insights-content.active .score-item,
+#ai-insights-content.active .score-bar,
+#ai-insights-content.active .score-fill,
+#ai-insights-content.active .score-number,
+#ai-insights-content.active .score-label,
+#ai-insights-content.active .score-value,
+#ai-insights-content.active .health-score,
+#ai-insights-content.active .food-suggestions,
+#ai-insights-content.active .suggestion-category,
+#ai-insights-content.active .achievement-stat,
+#ai-insights-content.active .stat-label,
+#ai-insights-content.active .stat-value {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    position: relative !important;
+    left: auto !important;
+    top: auto !important;
+    width: auto !important;
+    height: auto !important;
+    margin: revert !important;
+    padding: revert !important;
+    border: revert !important;
+    background: revert !important;
+    z-index: auto !important;
+}
+
+/* Special handling for grid layouts in AI Insights */
+#ai-insights-content.active .insights-grid {
+    display: grid !important;
+}
+
+#ai-insights-content.active .analytics-grid {
+    display: grid !important;
+}
+
 /* --- Responsive Design --- */
 @media (max-width: 1024px) {
     .hero-section {
@@ -786,8 +900,18 @@ i.lucide {
 .dark-mode-toggle:hover { background-color: var(--border-color); color: var(--primary-color); }
 
 /* --- Summary / Progress Section --- */
-.summary-section { padding: 4rem 0; text-align: center; }
-.progress-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 2.5rem; justify-items: center; margin-bottom: 2rem; }
+.summary-section { 
+    padding: var(--spacing-xl) var(--spacing-xl); 
+    text-align: center; 
+}
+
+.progress-grid { 
+    display: grid; 
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); 
+    gap: 2.5rem; 
+    justify-items: center; 
+    margin-bottom: 2rem; 
+}
 .progress-card { position: relative; display: flex; flex-direction: column; align-items: center; }
 .progress-ring { transform: rotate(-90deg); width: 140px; height: 140px; }
 .progress-ring-bg { fill: none; stroke: var(--border-color); stroke-width: 12; }
@@ -799,7 +923,9 @@ i.lucide {
 .progress-text .label { font-size: 0.9rem; color: var(--subtle-text-color); }
 
 /* --- Meal Logging Section (UPDATED) --- */
-.meal-logging-section { padding: 0 0 4rem 0; }
+.meal-logging-section { 
+    padding: 0 var(--spacing-xl) var(--spacing-xl) var(--spacing-xl); 
+}
 .meal-accordion { display: grid; gap: 1.5rem; }
 .meal-card { 
     background-color: var(--card-background); 
@@ -2825,13 +2951,6 @@ input[type="file"] { display: none; }
     gap: 1rem;
 }
 
-.analytics-header h2 {
-    margin: 0;
-    color: var(--text-color);
-    font-size: 2rem;
-    font-weight: 700;
-}
-
 /* Time Frame Selector */
 .time-frame-selector {
     display: flex;
@@ -3390,14 +3509,6 @@ input[type="file"] { display: none; }
 /* History Section - FIXED TO MATCH WORKING SECTIONS */
 .history-section {
     padding: var(--spacing-xl);
-}
-
-.history-section h2 {
-    font-size: 2rem;
-    font-weight: 700;
-    color: var(--text-color);
-    margin: 0 0 2rem 0;
-    text-align: center;
 }
 
 .history-nav {
@@ -4385,11 +4496,680 @@ input[type="file"] { display: none; }
     padding: var(--spacing-xl);
 }
 
+/* Insights Controls */
+.insights-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.timeframe-selector {
+    padding: 8px 16px;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    background: var(--card-background);
+    color: var(--text-color);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px var(--shadow-light);
+}
+
+.timeframe-selector:hover {
+    border-color: var(--primary-color);
+    box-shadow: 0 4px 8px var(--shadow-light);
+}
+
+.timeframe-selector:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+/* Insights Views - Match Analytics Structure */
+.insights-view {
+    margin-bottom: 2rem;
+    display: none;
+}
+
+.insights-view.active {
+    display: block;
+}
+
+.insights-header {
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.insights-header h3 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--text-color);
+    margin: 0 0 0.5rem 0;
+}
+
+.insights-date {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    font-weight: 500;
+}
+
+/* Insight Analytics Cards - Match Analytics Tab */
+.insight-analytics-card {
+    background: var(--card-background);
+    border-radius: 16px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 12px var(--shadow-light);
+    border: 1px solid var(--border-color);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.insight-analytics-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px var(--shadow-color);
+}
+
+.insight-analytics-card.wide {
+    grid-column: span 2;
+}
+
+.insight-analytics-card.full-width {
+    grid-column: 1 / -1;
+}
+
+.card-header {
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: between;
+}
+
+.card-header h4 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-color);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.card-header .card-icon {
+    width: 20px;
+    height: 20px;
+    color: var(--primary-color);
+}
+
+/* AI Insights Specific Styles */
+.timeframe-selector {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+    padding: 0.25rem;
+    background: var(--background-secondary);
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+}
+
+.timeframe-btn {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    border-radius: 8px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.timeframe-btn:hover {
+    background: var(--hover-color);
+    color: var(--text-color);
+}
+
+.timeframe-btn.active {
+    background: var(--primary-color);
+    color: white;
+    box-shadow: 0 2px 8px var(--primary-shadow);
+}
+
+.insights-header {
+    margin-bottom: 2rem;
+}
+
+.insights-header h3 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-color);
+    margin: 0 0 0.5rem 0;
+}
+
+.insights-date {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+}
+
+/* Progress Grid Styles */
+.progress-grid {
+    display: grid;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.progress-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.progress-label {
+    font-weight: 500;
+    color: var(--text-color);
+    font-size: 0.9rem;
+}
+
+.progress-bar {
+    height: 8px;
+    background: var(--background-secondary);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+.progress-text {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.progress-summary {
+    padding: 1rem;
+    background: var(--background-secondary);
+    border-radius: 8px;
+    border-left: 4px solid var(--primary-color);
+}
+
+.progress-summary p {
+    margin: 0;
+    color: var(--text-color);
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+/* Timing Analysis Styles */
+.timing-analysis {
+    display: grid;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.timing-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    background: var(--background-secondary);
+    border-radius: 8px;
+}
+
+.timing-label {
+    font-weight: 500;
+    color: var(--text-color);
+}
+
+.timing-value {
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+.timing-insight {
+    padding: 1rem;
+    background: var(--info-background);
+    border-radius: 8px;
+    border-left: 4px solid var(--info-color);
+}
+
+.timing-insight p {
+    margin: 0;
+    color: var(--text-color);
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+/* Suggestions Styles */
+.suggestions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.suggestion-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background: var(--background-secondary);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.suggestion-icon {
+    width: 16px;
+    height: 16px;
+    color: var(--primary-color);
+    flex-shrink: 0;
+}
+
+.suggestion-text {
+    color: var(--text-color);
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+/* Next Meal Card Styles */
+.next-meal-card {
+    padding: 1rem;
+    background: var(--background-secondary);
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+}
+
+.meal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.meal-header h5 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-color);
+}
+
+.meal-time {
+    color: var(--primary-color);
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.meal-suggestions {
+    margin-bottom: 1rem;
+}
+
+.meal-suggestion {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.meal-suggestion:last-child {
+    border-bottom: none;
+}
+
+.food-name {
+    font-weight: 500;
+    color: var(--text-color);
+}
+
+.food-reason {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+
+.meal-target {
+    padding: 0.75rem;
+    background: var(--success-background);
+    border-radius: 6px;
+    text-align: center;
+}
+
+.meal-target span {
+    color: var(--success-color);
+    font-weight: 500;
+    font-size: 0.85rem;
+}
+
+/* Consistency Score Styles */
+.consistency-score {
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+.score-circle {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: conic-gradient(var(--primary-color) 0deg, var(--primary-color) var(--score-angle, 0deg), var(--background-secondary) var(--score-angle, 0deg));
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1rem;
+    position: relative;
+}
+
+.score-circle::before {
+    content: '';
+    position: absolute;
+    width: 80px;
+    height: 80px;
+    background: var(--card-background);
+    border-radius: 50%;
+}
+
+.score-number {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-color);
+    z-index: 1;
+}
+
+.score-label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-weight: 500;
+    z-index: 1;
+}
+
+.consistency-breakdown {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.breakdown-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem;
+    background: var(--background-secondary);
+    border-radius: 6px;
+}
+
+.breakdown-label {
+    color: var(--text-color);
+    font-size: 0.9rem;
+}
+
+.breakdown-value {
+    color: var(--primary-color);
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+/* Pattern Analysis Styles */
+.patterns-list {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.pattern-item {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 1rem;
+    padding: 0.75rem;
+    background: var(--background-secondary);
+    border-radius: 8px;
+    align-items: center;
+}
+
+.pattern-day {
+    font-weight: 600;
+    color: var(--text-color);
+    font-size: 0.9rem;
+}
+
+.pattern-description {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+
+.pattern-trend {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+.pattern-trend.up {
+    background: var(--success-background);
+    color: var(--success-color);
+}
+
+.pattern-trend.down {
+    background: var(--warning-background);
+    color: var(--warning-color);
+}
+
+.pattern-trend.neutral {
+    background: var(--background-secondary);
+    color: var(--text-muted);
+}
+
+/* Achievement Styles */
+.achievement-summary {
+    text-align: center;
+    margin-bottom: 1.5rem;
+    padding: 1rem;
+    background: var(--success-background);
+    border-radius: 12px;
+}
+
+.achievement-score {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--success-color);
+    margin-bottom: 0.25rem;
+}
+
+.achievement-label {
+    color: var(--success-dark);
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.achievement-details {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.achievement-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    background: var(--background-secondary);
+    border-radius: 8px;
+}
+
+.achievement-metric {
+    color: var(--text-color);
+    font-weight: 500;
+}
+
+.achievement-count {
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+/* Strategy Styles */
+.strategies-list {
+    display: grid;
+    gap: 1rem;
+}
+
+.strategy-item {
+    padding: 1rem;
+    background: var(--background-secondary);
+    border-radius: 12px;
+    border-left: 4px solid var(--primary-color);
+}
+
+.strategy-title {
+    font-weight: 600;
+    color: var(--text-color);
+    margin-bottom: 0.5rem;
+}
+
+.strategy-description {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    line-height: 1.4;
+    margin-bottom: 0.5rem;
+}
+
+.strategy-impact {
+    color: var(--primary-color);
+    font-size: 0.8rem;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+/* Insight Status Indicators */
+.status-indicator {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-indicator.excellent {
+    background: rgba(34, 197, 94, 0.1);
+    color: #22c55e;
+}
+
+.status-indicator.good {
+    background: rgba(59, 130, 246, 0.1);
+    color: #3b82f6;
+}
+
+.status-indicator.fair {
+    background: rgba(251, 191, 36, 0.1);
+    color: #fbbf24;
+}
+
+.status-indicator.needs-improvement {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+}
+
+/* Recommendation Lists */
+.recommendation-item {
+    background: var(--background-light);
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    border-left: 4px solid var(--primary-color);
+    transition: all 0.2s ease;
+}
+
+.recommendation-item:hover {
+    background: var(--card-background);
+    transform: translateX(4px);
+}
+
+.recommendation-item h5 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-color);
+    margin: 0 0 0.5rem 0;
+}
+
+.recommendation-item p {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin: 0;
+    line-height: 1.4;
+}
+
+/* Goal Progress Indicators */
+.goal-progress-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.goal-progress-item:last-child {
+    border-bottom: none;
+}
+
+.goal-label {
+    font-weight: 500;
+    color: var(--text-color);
+}
+
+.goal-value {
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.goal-bar {
+    flex: 1;
+    height: 6px;
+    background: var(--background-light);
+    border-radius: 3px;
+    margin: 0 1rem;
+    overflow: hidden;
+}
+
+.goal-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+    border-radius: 3px;
+    transition: width 0.6s ease;
+}
+
+/* Analytics Section */
+.analytics-section {
+    padding: var(--spacing-xl);
+}
+
+/* Body Metrics Section */
+.body-metrics-section {
+    padding: var(--spacing-xl);
+}
+
+/* Goals Section */
+.goals-section {
+    padding: var(--spacing-xl);
+}
+
+/* History Section */
+.history-section {
+    padding: var(--spacing-xl);
+}
+
+/* Profile Section */
+.profile-section {
+    padding: var(--spacing-xl);
+}
+
 .section-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 2rem;
+    margin-bottom: var(--spacing-xl);
 }
 
 .section-header h2 {

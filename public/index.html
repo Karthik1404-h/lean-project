@@ -228,12 +228,14 @@
                                 <div class="progress-text">
                                     <span class="value" id="total-protein">0</span>
                                     <span class="label">/ <span id="protein-goal-display">120</span>g Protein</span>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                </div>
-            </section>                    <section id="meal-logging" class="meal-logging-section">
-    <h2>Your Meals</h2>
-    <div class="meal-accordion">
+                    </section>
+                    
+                    <section id="meal-logging" class="meal-logging-section">
+                        <h2>Your Meals</h2>
+                        <div class="meal-accordion">
         <div class="meal-card" id="breakfast">
             <div class="meal-card-header">
                 <div class="meal-title">
@@ -1002,50 +1004,80 @@
                     </div>
                     
                     <!-- Daily Insights -->
-                    <div class="insights-view" id="daily-insights-view">
+                    <div class="insights-view active" id="daily-insights-view">
                         <div class="insights-header">
                             <h3>Today's Nutritional Analysis</h3>
                             <div class="insights-date" id="daily-date"></div>
                         </div>
                         
                         <div class="analytics-grid">
-                            <!-- Calorie Status -->
+                            <!-- Daily Goal Progress -->
                             <div class="insight-analytics-card">
                                 <div class="card-header">
-                                    <h4>Calorie Deficit Analysis</h4>
-                                    <div class="status-indicator" id="deficit-status"></div>
+                                    <h4>
+                                        <i data-lucide="target" class="card-icon"></i>
+                                        Daily Goal Progress
+                                    </h4>
+                                    <div class="status-indicator" id="daily-goal-status">Calculating...</div>
                                 </div>
-                                <div class="deficit-chart-container">
-                                    <canvas id="daily-deficit-chart"></canvas>
-                                </div>
-                                <div class="deficit-summary">
-                                    <div class="deficit-stat">
-                                        <span class="stat-label">Target Deficit</span>
-                                        <span class="stat-value" id="target-deficit">-500 kcal</span>
-                                    </div>
-                                    <div class="deficit-stat">
-                                        <span class="stat-label">Current Status</span>
-                                        <span class="stat-value" id="current-deficit">-320 kcal</span>
-                                    </div>
+                                <div class="goal-progress-container" id="daily-goal-progress">
+                                    <!-- Goal progress will be populated here -->
                                 </div>
                             </div>
 
-                            <!-- Meal Recommendations -->
+                            <!-- Meal Timing Analysis -->
                             <div class="insight-analytics-card">
                                 <div class="card-header">
-                                    <h4>Smart Meal Recommendations</h4>
+                                    <h4>
+                                        <i data-lucide="clock" class="card-icon"></i>
+                                        Meal Timing Analysis
+                                    </h4>
                                 </div>
-                                <div class="meal-recommendations" id="meal-recommendations">
-                                    <!-- Will be populated by JavaScript -->
+                                <div class="meal-timing-analysis" id="daily-meal-timing">
+                                    <!-- Meal timing analysis will be populated here -->
                                 </div>
                             </div>
 
-                            <!-- Progress Toward Goal -->
+                            <!-- Smart Meal Suggestions -->
+                            <div class="insight-analytics-card wide">
+                                <div class="card-header">
+                                    <h4>
+                                        <i data-lucide="chef-hat" class="card-icon"></i>
+                                        Smart Meal Suggestions
+                                    </h4>
+                                </div>
+                                <div class="meal-suggestions-grid" id="daily-meal-suggestions">
+                                    <!-- Meal suggestions will be populated here -->
+                                </div>
+                            </div>
+
+                            <!-- Next Meal Recommendation -->
                             <div class="insight-analytics-card">
                                 <div class="card-header">
-                                    <h4>Daily Goal Progress</h4>
+                                    <h4>
+                                        <i data-lucide="lightbulb" class="card-icon"></i>
+                                        Next Meal Recommendation
+                                    </h4>
                                 </div>
-                                <div class="goal-progress-visual" id="daily-goal-progress">
+                                <div class="next-meal-recommendation" id="daily-next-meal">
+                                    <!-- Next meal recommendation will be populated here -->
+                                </div>
+                            </div>
+
+                            <!-- Nutrition Balance -->
+                            <div class="insight-analytics-card">
+                                <div class="card-header">
+                                    <h4>
+                                        <i data-lucide="pie-chart" class="card-icon"></i>
+                                        Nutrition Balance
+                                    </h4>
+                                </div>
+                                <div class="nutrition-balance" id="daily-nutrition-balance">
+                                    <!-- Nutrition balance will be populated here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                                     <!-- Progress visualization -->
                                 </div>
                             </div>
@@ -1060,32 +1092,73 @@
                         </div>
                         
                         <div class="analytics-grid">
-                            <!-- Food Quality Analysis -->
-                            <div class="insight-analytics-card wide">
+                            <!-- Weekly Consistency Score -->
+                            <div class="insight-analytics-card">
                                 <div class="card-header">
-                                    <h4>Food Quality Breakdown</h4>
+                                    <h4>
+                                        <i data-lucide="trending-up" class="card-icon"></i>
+                                        Consistency Score
+                                    </h4>
+                                    <div class="status-indicator" id="weekly-consistency-status">Calculating...</div>
                                 </div>
-                                <div class="food-quality-chart-container">
-                                    <canvas id="food-quality-chart"></canvas>
-                                </div>
-                                <div class="food-categories">
-                                    <div class="category-stat healthy">
-                                        <span class="category-label">Healthy Foods</span>
-                                        <span class="category-value" id="healthy-foods-count">0</span>
-                                    </div>
-                                    <div class="category-stat moderate">
-                                        <span class="category-label">Moderate Foods</span>
-                                        <span class="category-value" id="moderate-foods-count">0</span>
-                                    </div>
-                                    <div class="category-stat junk">
-                                        <span class="category-label">Junk Foods</span>
-                                        <span class="category-value" id="junk-foods-count">0</span>
-                                    </div>
+                                <div class="consistency-analysis" id="weekly-consistency">
+                                    <!-- Weekly consistency will be populated here -->
                                 </div>
                             </div>
 
-                            <!-- Weekly Deficit Trend -->
+                            <!-- Weekly Patterns -->
                             <div class="insight-analytics-card">
+                                <div class="card-header">
+                                    <h4>
+                                        <i data-lucide="activity" class="card-icon"></i>
+                                        Eating Patterns
+                                    </h4>
+                                </div>
+                                <div class="pattern-analysis" id="weekly-patterns">
+                                    <!-- Pattern analysis will be populated here -->
+                                </div>
+                            </div>
+
+                            <!-- Weekly Goal Achievement -->
+                            <div class="insight-analytics-card wide">
+                                <div class="card-header">
+                                    <h4>
+                                        <i data-lucide="award" class="card-icon"></i>
+                                        Weekly Goal Achievement
+                                    </h4>
+                                </div>
+                                <div class="weekly-achievement" id="weekly-achievement">
+                                    <!-- Weekly achievement will be populated here -->
+                                </div>
+                            </div>
+
+                            <!-- Weekly Recommendations -->
+                            <div class="insight-analytics-card">
+                                <div class="card-header">
+                                    <h4>
+                                        <i data-lucide="compass" class="card-icon"></i>
+                                        Weekly Focus Areas
+                                    </h4>
+                                </div>
+                                <div class="weekly-recommendations" id="weekly-recommendations">
+                                    <!-- Weekly recommendations will be populated here -->
+                                </div>
+                            </div>
+
+                            <!-- Next Week Strategy -->
+                            <div class="insight-analytics-card">
+                                <div class="card-header">
+                                    <h4>
+                                        <i data-lucide="map" class="card-icon"></i>
+                                        Next Week Strategy
+                                    </h4>
+                                </div>
+                                <div class="strategy-recommendations" id="weekly-strategy">
+                                    <!-- Strategy recommendations will be populated here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                                 <div class="card-header">
                                     <h4>Weekly Deficit Trend</h4>
                                 </div>
@@ -1115,141 +1188,82 @@
                         </div>
                         
                         <div class="analytics-grid">
-                            <!-- Goal Achievement Progress -->
+                            <!-- Monthly Goal Progress -->
                             <div class="insight-analytics-card wide">
                                 <div class="card-header">
-                                    <h4>Goal Achievement Timeline</h4>
+                                    <h4>
+                                        <i data-lucide="trophy" class="card-icon"></i>
+                                        Monthly Goal Progress
+                                    </h4>
+                                    <div class="status-indicator" id="monthly-goal-status">Calculating...</div>
                                 </div>
-                                <canvas id="monthly-goal-chart"></canvas>
-                                <div class="achievement-stats">
-                                    <div class="achievement-stat">
-                                        <span class="stat-label">Weight Lost</span>
-                                        <span class="stat-value" id="monthly-weight-lost">0 kg</span>
-                                    </div>
-                                    <div class="achievement-stat">
-                                        <span class="stat-label">Goal Progress</span>
-                                        <span class="stat-value" id="monthly-goal-progress">0%</span>
-                                    </div>
-                                    <div class="achievement-stat">
-                                        <span class="stat-label">Avg Deficit</span>
-                                        <span class="stat-value" id="monthly-avg-deficit">0 kcal</span>
-                                    </div>
+                                <div class="monthly-progress" id="monthly-progress">
+                                    <!-- Monthly progress will be populated here -->
                                 </div>
                             </div>
 
-                            <!-- Consistency Analysis -->
+                            <!-- Habit Formation -->
                             <div class="insight-analytics-card">
                                 <div class="card-header">
-                                    <h4>Consistency Score</h4>
+                                    <h4>
+                                        <i data-lucide="repeat" class="card-icon"></i>
+                                        Habit Formation
+                                    </h4>
                                 </div>
-                                <div class="consistency-visual" id="monthly-consistency">
-                                    <!-- Consistency visualization -->
+                                <div class="habit-analysis" id="monthly-habits">
+                                    <!-- Habit analysis will be populated here -->
                                 </div>
                             </div>
 
-                            <!-- Long-term Recommendations -->
+                            <!-- Long-term Trends -->
                             <div class="insight-analytics-card">
                                 <div class="card-header">
-                                    <h4>Long-term Strategy</h4>
+                                    <h4>
+                                        <i data-lucide="trending-up" class="card-icon"></i>
+                                        Long-term Trends
+                                    </h4>
                                 </div>
-                                <div class="longterm-recommendations" id="monthly-recommendations">
-                                    <!-- Long-term recommendations -->
+                                <div class="trend-analysis" id="monthly-trends">
+                                    <!-- Trend analysis will be populated here -->
+                                </div>
+                            </div>
+
+                            <!-- Monthly Achievements -->
+                            <div class="insight-analytics-card wide">
+                                <div class="card-header">
+                                    <h4>
+                                        <i data-lucide="star" class="card-icon"></i>
+                                        Monthly Achievements
+                                    </h4>
+                                </div>
+                                <div class="achievement-highlights" id="monthly-achievements">
+                                    <!-- Achievement highlights will be populated here -->
+                                </div>
+                            </div>
+
+                            <!-- Next Month Strategy -->
+                            <div class="insight-analytics-card">
+                                <div class="card-header">
+                                    <h4>
+                                        <i data-lucide="calendar" class="card-icon"></i>
+                                        Next Month Strategy
+                                    </h4>
+                                </div>
+                                <div class="monthly-strategy" id="monthly-strategy">
+                                    <!-- Monthly strategy will be populated here -->
                                 </div>
                             </div>
                         </div>
                     </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Personalized Recommendations -->
-                        <div class="insight-card recommendations">
-                            <div class="insight-header">
-                                <h3>Personalized Recommendations</h3>
-                                <span class="insight-badge">Based on your goals</span>
-                            </div>
-                            <div class="recommendation-list" id="recommendations-list">
-                                <div class="loading-insights">
-                                    <i data-lucide="brain"></i>
-                                    <p>Generating recommendations...</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Health Score -->
-                        <div class="insight-card health-score">
-                            <div class="insight-header">
-                                <h3>Health Score</h3>
-                                <span class="score-value" id="health-score-value">--</span>
-                            </div>
-                            <div class="score-breakdown">
-                                <div class="score-item">
-                                    <span class="score-label">Nutrition Balance</span>
-                                    <div class="score-bar">
-                                        <div class="score-fill" id="nutrition-score"></div>
-                                    </div>
-                                    <span class="score-number" id="nutrition-score-num">--</span>
-                                </div>
-                                <div class="score-item">
-                                    <span class="score-label">Consistency</span>
-                                    <div class="score-bar">
-                                        <div class="score-fill" id="consistency-score"></div>
-                                    </div>
-                                    <span class="score-number" id="consistency-score-num">--</span>
-                                </div>
-                                <div class="score-item">
-                                    <span class="score-label">Goal Progress</span>
-                                    <div class="score-bar">
-                                        <div class="score-fill" id="progress-score"></div>
-                                    </div>
-                                    <span class="score-number" id="progress-score-num">--</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Food Suggestions -->
-                        <div class="insight-card food-suggestions">
-                            <div class="insight-header">
-                                <h3>Smart Food Suggestions</h3>
-                                <span class="insight-badge">AI Recommended</span>
-                            </div>
-                            <div class="suggestion-categories">
-                                <div class="suggestion-category">
-                                    <h4>High Protein Foods</h4>
-                                    <div class="food-list" id="protein-suggestions">
-                                        <!-- Will be populated by AI -->
-                                    </div>
-                                </div>
-                                <div class="suggestion-category">
-                                    <h4>Nutrient Dense Options</h4>
-                                    <div class="food-list" id="nutrient-suggestions">
-                                        <!-- Will be populated by AI -->
-                                    </div>
-                                </div>
-                                <div class="suggestion-category">
-                                    <h4>Goal-Aligned Choices</h4>
-                                    <div class="food-list" id="goal-suggestions">
-                                        <!-- Will be populated by AI -->
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Insight History -->
-                    <div class="insight-history">
-                        <h3>Insight History</h3>
-                        <div class="insight-timeline" id="insight-timeline">
-                            <!-- Previous insights will be populated here -->
-                        </div>
-                    </div>
-                </section>
+                </div>
             </div>
 
             <!-- History Content (hidden by default) -->
             <div class="content-area" id="history-content" style="display: none;">
                 <section class="history-section">
-                    <h2>Nutrition History</h2>
+                    <div class="section-header">
+                        <h2>Nutrition History</h2>
+                    </div>
                     
                     <!-- Year Selector -->
                     <div class="history-nav">

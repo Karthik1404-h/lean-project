@@ -551,7 +551,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (analyticsContent) analyticsContent.style.display = 'none';
         if (bodyMetricsContent) bodyMetricsContent.style.display = 'none';
         if (goalsContent) goalsContent.style.display = 'none';
-        if (aiInsightsContent) aiInsightsContent.style.display = 'none';
+        if (aiInsightsContent) {
+            aiInsightsContent.style.display = 'none';
+            aiInsightsContent.classList.remove('active');
+        }
         if (historyContent) historyContent.style.display = 'none';
         if (profileContent) profileContent.style.display = 'none';
         
@@ -591,6 +594,7 @@ document.addEventListener('DOMContentLoaded', () => {
             case 'ai-insights':
                 if (aiInsightsContent) {
                     aiInsightsContent.style.display = 'block';
+                    aiInsightsContent.classList.add('active');
                     initializeAIInsights();
                 }
                 if (sidebarAiInsights) sidebarAiInsights.classList.add('active');
@@ -5154,229 +5158,1145 @@ document.addEventListener('DOMContentLoaded', () => {
     function initializeAIInsights() {
         console.log('🧠 Initializing AI Insights...');
         
-        // Display sample insights while we work on the real AI integration
-        displaySampleInsights();
+        // Initialize timeframe selector
+        setupTimeframeSelector();
+        
+        // Load insights based on Firebase data
+        loadFirebaseAIInsights();
+        
+        // Setup event listeners
         setupAIInsightsEventListeners();
-        console.log('✅ AI Insights initialized with sample data');
-    }
-    
-    function displaySampleInsights() {
-        // Sample daily insights
-        const dailyContainer = document.getElementById('daily-insights-content');
-        if (dailyContainer) {
-            dailyContainer.innerHTML = `
-                <div class="insight-item">
-                    <div class="insight-label">Calorie Status</div>
-                    <div class="insight-value on-track">On Track</div>
-                </div>
-                <div class="insight-item">
-                    <div class="insight-label">Protein Status</div>
-                    <div class="insight-value good">Good</div>
-                </div>
-                <div class="insight-recommendations">
-                    <h4>Today's Recommendations</h4>
-                    <ul>
-                        <li>Add more vegetables to your dinner for better fiber intake</li>
-                        <li>Consider a protein-rich snack this afternoon</li>
-                        <li>Stay hydrated - aim for 8 glasses of water</li>
-                    </ul>
-                </div>
-                <div class="next-meal-suggestion">
-                    <h4>Next Meal Suggestion</h4>
-                    <p>For dinner, try grilled chicken with quinoa and steamed vegetables to meet your protein goals.</p>
-                </div>
-            `;
-        }
         
-        // Sample weekly insights
-        const weeklyContainer = document.getElementById('weekly-insights-content');
-        if (weeklyContainer) {
-            weeklyContainer.innerHTML = `
-                <div class="insight-summary">
-                    <div class="summary-item">
-                        <span class="summary-label">Consistency Score</span>
-                        <span class="summary-value">85%</span>
-                    </div>
-                    <div class="summary-item">
-                        <span class="summary-label">Trend</span>
-                        <span class="summary-value">Improving</span>
-                    </div>
-                </div>
-                <div class="weekly-patterns">
-                    <h4>Patterns Identified</h4>
-                    <ul>
-                        <li>You tend to eat more carbs on weekends</li>
-                        <li>Protein intake is consistent throughout the week</li>
-                        <li>Best eating days are Tuesday and Thursday</li>
-                    </ul>
-                </div>
-                <div class="weekly-focus">
-                    <h4>Next Week Focus</h4>
-                    <p>Focus on increasing vegetable intake and maintaining your current protein levels.</p>
-                </div>
-            `;
-        }
-        
-        // Sample monthly insights
-        const monthlyContainer = document.getElementById('monthly-insights-content');
-        if (monthlyContainer) {
-            monthlyContainer.innerHTML = `
-                <div class="monthly-summary">
-                    <div class="summary-score">Overall Progress: Excellent</div>
-                    <div class="goal-alignment">Goal Alignment: On Track</div>
-                </div>
-                <div class="monthly-highlights">
-                    <h4>Monthly Highlights</h4>
-                    <ul>
-                        <li>Maintained consistent calorie intake for 3 weeks</li>
-                        <li>Increased protein consumption by 15%</li>
-                        <li>Successfully logged meals 28 out of 30 days</li>
-                    </ul>
-                </div>
-                <div class="strategy">
-                    <h4>Next Month Strategy</h4>
-                    <p>Continue current eating patterns while gradually increasing fiber intake through more vegetables and whole grains.</p>
-                </div>
-            `;
-        }
-        
-        // Sample recommendations
-        const recommendationsContainer = document.getElementById('recommendations-list');
-        if (recommendationsContainer) {
-            recommendationsContainer.innerHTML = `
-                <div class="macro-recommendations">
-                    <h4>Macro Recommendations</h4>
-                    <p><strong>Calories:</strong> Maintain current 2800 kcal daily target</p>
-                    <p><strong>Protein:</strong> Excellent! Keep up the 120g daily intake</p>
-                </div>
-                <div class="habit-changes">
-                    <h4>Suggested Habit Changes</h4>
-                    <ul>
-                        <li>Add a handful of nuts as an afternoon snack</li>
-                        <li>Include one extra serving of vegetables with lunch</li>
-                        <li>Try meal prepping on Sundays for better consistency</li>
-                    </ul>
-                </div>
-            `;
-        }
-        
-        // Update food suggestions
-        const proteinSuggestions = document.getElementById('protein-suggestions');
-        const nutrientSuggestions = document.getElementById('nutrient-suggestions');
-        const goalSuggestions = document.getElementById('goal-suggestions');
-        
-        if (proteinSuggestions) {
-            proteinSuggestions.innerHTML = ['Grilled Chicken', 'Greek Yogurt', 'Lentils', 'Eggs'].map(food => 
-                `<div class="food-suggestion">${food}</div>`
-            ).join('');
-        }
-        
-        if (nutrientSuggestions) {
-            nutrientSuggestions.innerHTML = ['Spinach', 'Blueberries', 'Almonds', 'Salmon'].map(food => 
-                `<div class="food-suggestion">${food}</div>`
-            ).join('');
-        }
-        
-        if (goalSuggestions) {
-            goalSuggestions.innerHTML = ['Quinoa Bowl', 'Protein Smoothie', 'Veggie Stir-fry', 'Lean Turkey'].map(food => 
-                `<div class="food-suggestion">${food}</div>`
-            ).join('');
-        }
-        
-        // Update health score
-        updateElement('health-score-value', '87');
-        updateProgressBar('nutrition-score', 90);
-        updateProgressBar('consistency-score', 85);
-        updateProgressBar('progress-score', 75);
-        updateElement('nutrition-score-num', '90');
-        updateElement('consistency-score-num', '85');
-        updateElement('progress-score-num', '75');
+        console.log('✅ AI Insights initialized with Firebase data');
     }
 
-    async function loadAIInsights() {
-        if (!currentUser) return;
-
-        // Load all insights types
-        await Promise.all([
-            loadDailyInsights(),
-            loadWeeklyInsights(),
-            loadMonthlyInsights(),
-            loadRecommendations()
-        ]);
-    }
-
-    async function loadDailyInsights() {
-        try {
-            const userProfile = await getUserProfile();
-            const response = await fetch('/api/ai-insights/daily', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    todayData: dailyData,
-                    goals: dailyData.goals,
-                    userProfile: userProfile
-                })
+    function setupTimeframeSelector() {
+        const timeframeButtons = document.querySelectorAll('.timeframe-btn');
+        const insightViews = document.querySelectorAll('.insights-view');
+        
+        timeframeButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                // Update active button
+                timeframeButtons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                
+                // Show corresponding view
+                const timeframe = btn.dataset.timeframe;
+                insightViews.forEach(view => {
+                    view.style.display = view.id === `${timeframe}-insights-view` ? 'block' : 'none';
+                });
+                
+                // Update date display
+                updateDateDisplay(timeframe);
             });
+        });
+        
+        // Set default view
+        document.querySelector('[data-timeframe="daily"]').classList.add('active');
+        document.getElementById('daily-insights-view').style.display = 'block';
+        updateDateDisplay('daily');
+    }
 
-            if (response.ok) {
-                const insights = await response.json();
-                displayDailyInsights(insights);
-            }
+    function updateDateDisplay(timeframe) {
+        const now = new Date();
+        let dateText = '';
+        
+        switch (timeframe) {
+            case 'daily':
+                dateText = now.toLocaleDateString('en-US', { 
+                    weekday: 'long', 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                });
+                break;
+            case 'weekly':
+                const weekStart = new Date(now.setDate(now.getDate() - now.getDay()));
+                const weekEnd = new Date(weekStart);
+                weekEnd.setDate(weekStart.getDate() + 6);
+                dateText = `${weekStart.toLocaleDateString()} - ${weekEnd.toLocaleDateString()}`;
+                break;
+            case 'monthly':
+                dateText = now.toLocaleDateString('en-US', { 
+                    year: 'numeric', 
+                    month: 'long' 
+                });
+                break;
+        }
+        
+        const dateEl = document.getElementById(`${timeframe}-date`);
+        if (dateEl) {
+            dateEl.textContent = dateText;
+        }
+    }
+
+    async function loadFirebaseAIInsights() {
+        if (!currentUser) {
+            displaySampleInsights();
+            return;
+        }
+
+        try {
+            // Load real data from Firebase
+            await Promise.all([
+                loadDailyInsightsFromFirebase(),
+                loadWeeklyInsightsFromFirebase(),
+                loadMonthlyInsightsFromFirebase()
+            ]);
+        } catch (error) {
+            console.error('Error loading Firebase insights:', error);
+            displaySampleInsights(); // Fallback to sample data
+        }
+    }
+
+    async function loadDailyInsightsFromFirebase() {
+        try {
+            // Get today's data
+            const todayData = await getTodaysNutritionData();
+            const goals = await getUserGoals();
+            
+            // Calculate insights
+            const insights = generateDailyInsights(todayData, goals);
+            
+            // Display daily insights
+            displayDailyInsights(insights);
+            
         } catch (error) {
             console.error('Error loading daily insights:', error);
-            displayInsightsError('daily-insights-content');
+            displayDailyInsightsError();
         }
     }
 
-    async function loadWeeklyInsights() {
+    async function loadWeeklyInsightsFromFirebase() {
         try {
-            const weeklyData = await getWeeklyNutritionData();
-            const userProfile = await getUserProfile();
+            // Get this week's data
+            const weekData = await getWeeklyNutritionData();
+            const goals = await getUserGoals();
             
-            const response = await fetch('/api/ai-insights/weekly', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    weeklyData: weeklyData,
-                    goals: dailyData.goals,
-                    userProfile: userProfile
-                })
-            });
-
-            if (response.ok) {
-                const insights = await response.json();
-                displayWeeklyInsights(insights);
-            }
+            // Calculate insights
+            const insights = generateWeeklyInsights(weekData, goals);
+            
+            // Display weekly insights
+            displayWeeklyInsights(insights);
+            
         } catch (error) {
             console.error('Error loading weekly insights:', error);
-            displayInsightsError('weekly-insights-content');
+            displayWeeklyInsightsError();
         }
     }
 
-    async function loadMonthlyInsights() {
+    async function loadMonthlyInsightsFromFirebase() {
         try {
-            const monthlyData = await getNutritionHistory(30);
-            const bodyMetrics = await getBodyMetrics();
-            const userProfile = await getUserProfile();
+            // Get this month's data
+            const monthData = await getMonthlyNutritionData();
+            const goals = await getUserGoals();
             
-            const response = await fetch('/api/ai-insights/monthly', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    monthlyData: monthlyData,
-                    bodyMetrics: bodyMetrics,
-                    goals: dailyData.goals,
-                    userProfile: userProfile
-                })
-            });
-
-            if (response.ok) {
-                const insights = await response.json();
-                displayMonthlyInsights(insights);
-            }
+            // Calculate insights
+            const insights = generateMonthlyInsights(monthData, goals);
+            
+            // Display monthly insights
+            displayMonthlyInsights(insights);
+            
         } catch (error) {
             console.error('Error loading monthly insights:', error);
-            displayInsightsError('monthly-insights-content');
+            displayMonthlyInsightsError();
+        }
+    }
+
+    function generateDailyInsights(todayData, goals) {
+        const insights = {
+            goalProgress: calculateGoalProgress(todayData, goals),
+            mealTiming: analyzeMealTiming(todayData),
+            smartSuggestions: generateSmartSuggestions(todayData, goals),
+            nextMeal: suggestNextMeal(todayData, goals)
+        };
+        
+        return insights;
+    }
+
+    function generateWeeklyInsights(weekData, goals) {
+        const insights = {
+            consistencyScore: calculateConsistencyScore(weekData),
+            eatingPatterns: analyzeEatingPatterns(weekData),
+            goalAchievement: calculateWeeklyGoalAchievement(weekData, goals),
+            strategies: generateWeeklyStrategies(weekData, goals)
+        };
+        
+        return insights;
+    }
+
+    function generateMonthlyInsights(monthData, goals) {
+        const insights = {
+            monthlyProgress: calculateMonthlyProgress(monthData, goals),
+            habitFormation: analyzeHabitFormation(monthData),
+            longTermTrends: analyzeLongTermTrends(monthData),
+            achievements: identifyAchievements(monthData, goals),
+            nextMonthStrategy: generateNextMonthStrategy(monthData, goals)
+        };
+        
+        return insights;
+    }
+
+    function displayDailyInsights(insights) {
+        // Goal Progress
+        const goalProgressEl = document.getElementById('daily-goal-progress');
+        if (goalProgressEl && insights.goalProgress) {
+            goalProgressEl.innerHTML = generateGoalProgressHTML(insights.goalProgress);
+        }
+
+        // Meal Timing
+        const mealTimingEl = document.getElementById('daily-meal-timing');
+        if (mealTimingEl && insights.mealTiming) {
+            mealTimingEl.innerHTML = generateMealTimingHTML(insights.mealTiming);
+        }
+
+        // Smart Suggestions
+        const suggestionsEl = document.getElementById('daily-suggestions');
+        if (suggestionsEl && insights.smartSuggestions) {
+            suggestionsEl.innerHTML = generateSuggestionsHTML(insights.smartSuggestions);
+        }
+
+        // Next Meal
+        const nextMealEl = document.getElementById('daily-next-meal');
+        if (nextMealEl && insights.nextMeal) {
+            nextMealEl.innerHTML = generateNextMealHTML(insights.nextMeal);
+        }
+
+        // Update status indicator
+        const statusEl = document.getElementById('daily-goal-status');
+        if (statusEl && insights.goalProgress) {
+            statusEl.textContent = insights.goalProgress.overall;
+            statusEl.className = `status-indicator ${insights.goalProgress.overall.toLowerCase().replace(' ', '-')}`;
+        }
+    }
+
+    function displayWeeklyInsights(insights) {
+        // Consistency Score
+        const consistencyEl = document.getElementById('weekly-consistency');
+        if (consistencyEl && insights.consistencyScore) {
+            consistencyEl.innerHTML = generateConsistencyHTML(insights.consistencyScore);
+        }
+
+        // Eating Patterns
+        const patternsEl = document.getElementById('weekly-patterns');
+        if (patternsEl && insights.eatingPatterns) {
+            patternsEl.innerHTML = generatePatternsHTML(insights.eatingPatterns);
+        }
+
+        // Goal Achievement
+        const achievementEl = document.getElementById('weekly-achievement');
+        if (achievementEl && insights.goalAchievement) {
+            achievementEl.innerHTML = generateAchievementHTML(insights.goalAchievement);
+        }
+
+        // Strategies
+        const strategiesEl = document.getElementById('weekly-strategies');
+        if (strategiesEl && insights.strategies) {
+            strategiesEl.innerHTML = generateStrategiesHTML(insights.strategies);
+        }
+
+        // Update status indicator
+        const statusEl = document.getElementById('weekly-consistency-status');
+        if (statusEl && insights.consistencyScore) {
+            statusEl.textContent = insights.consistencyScore.label;
+            statusEl.className = `status-indicator ${insights.consistencyScore.status}`;
+        }
+    }
+
+    function displayMonthlyInsights(insights) {
+        // Monthly Progress
+        const progressEl = document.getElementById('monthly-progress');
+        if (progressEl && insights.monthlyProgress) {
+            progressEl.innerHTML = generateMonthlyProgressHTML(insights.monthlyProgress);
+        }
+
+        // Habit Formation
+        const habitsEl = document.getElementById('monthly-habits');
+        if (habitsEl && insights.habitFormation) {
+            habitsEl.innerHTML = generateHabitsHTML(insights.habitFormation);
+        }
+
+        // Long-term Trends
+        const trendsEl = document.getElementById('monthly-trends');
+        if (trendsEl && insights.longTermTrends) {
+            trendsEl.innerHTML = generateTrendsHTML(insights.longTermTrends);
+        }
+
+        // Achievements
+        const achievementsEl = document.getElementById('monthly-achievements');
+        if (achievementsEl && insights.achievements) {
+            achievementsEl.innerHTML = generateAchievementsHTML(insights.achievements);
+        }
+
+        // Next Month Strategy
+        const strategyEl = document.getElementById('monthly-strategy');
+        if (strategyEl && insights.nextMonthStrategy) {
+            strategyEl.innerHTML = generateStrategyHTML(insights.nextMonthStrategy);
+        }
+
+        // Update status indicator
+        const statusEl = document.getElementById('monthly-goal-status');
+        if (statusEl && insights.monthlyProgress) {
+            statusEl.textContent = insights.monthlyProgress.overall;
+            statusEl.className = `status-indicator ${insights.monthlyProgress.status}`;
+        }
+    }
+    
+    // Helper functions for generating HTML content
+    function generateGoalProgressHTML(progress) {
+        return `
+            <div class="progress-grid">
+                <div class="progress-item">
+                    <div class="progress-label">Calories</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${progress.calories.percentage}%"></div>
+                    </div>
+                    <div class="progress-text">${progress.calories.current}/${progress.calories.goal} kcal</div>
+                </div>
+                <div class="progress-item">
+                    <div class="progress-label">Protein</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${progress.protein.percentage}%"></div>
+                    </div>
+                    <div class="progress-text">${progress.protein.current}/${progress.protein.goal}g</div>
+                </div>
+            </div>
+            <div class="progress-summary">
+                <p>${progress.summary}</p>
+            </div>
+        `;
+    }
+
+    function generateMealTimingHTML(timing) {
+        return `
+            <div class="timing-analysis">
+                <div class="timing-item">
+                    <span class="timing-label">Last Meal</span>
+                    <span class="timing-value">${timing.lastMeal}</span>
+                </div>
+                <div class="timing-item">
+                    <span class="timing-label">Eating Window</span>
+                    <span class="timing-value">${timing.eatingWindow}</span>
+                </div>
+                <div class="timing-item">
+                    <span class="timing-label">Meal Frequency</span>
+                    <span class="timing-value">${timing.frequency}</span>
+                </div>
+            </div>
+            <div class="timing-insight">
+                <p>${timing.insight}</p>
+            </div>
+        `;
+    }
+
+    function generateSuggestionsHTML(suggestions) {
+        const suggestionItems = suggestions.map(suggestion => 
+            `<div class="suggestion-item">
+                <i data-lucide="${suggestion.icon}" class="suggestion-icon"></i>
+                <span class="suggestion-text">${suggestion.text}</span>
+            </div>`
+        ).join('');
+        
+        return `<div class="suggestions-list">${suggestionItems}</div>`;
+    }
+
+    function generateNextMealHTML(nextMeal) {
+        return `
+            <div class="next-meal-card">
+                <div class="meal-header">
+                    <h5>${nextMeal.type}</h5>
+                    <span class="meal-time">${nextMeal.recommendedTime}</span>
+                </div>
+                <div class="meal-suggestions">
+                    ${nextMeal.suggestions.map(suggestion => 
+                        `<div class="meal-suggestion">
+                            <span class="food-name">${suggestion.food}</span>
+                            <span class="food-reason">${suggestion.reason}</span>
+                        </div>`
+                    ).join('')}
+                </div>
+                <div class="meal-target">
+                    <span>Target: ${nextMeal.targetCalories} kcal, ${nextMeal.targetProtein}g protein</span>
+                </div>
+            </div>
+        `;
+    }
+
+    function generateConsistencyHTML(consistency) {
+        return `
+            <div class="consistency-score">
+                <div class="score-circle">
+                    <div class="score-number">${consistency.score}%</div>
+                    <div class="score-label">${consistency.label}</div>
+                </div>
+            </div>
+            <div class="consistency-breakdown">
+                <div class="breakdown-item">
+                    <span class="breakdown-label">Meal Logging</span>
+                    <span class="breakdown-value">${consistency.mealLogging}%</span>
+                </div>
+                <div class="breakdown-item">
+                    <span class="breakdown-label">Goal Adherence</span>
+                    <span class="breakdown-value">${consistency.goalAdherence}%</span>
+                </div>
+                <div class="breakdown-item">
+                    <span class="breakdown-label">Timing Consistency</span>
+                    <span class="breakdown-value">${consistency.timing}%</span>
+                </div>
+            </div>
+        `;
+    }
+
+    function generatePatternsHTML(patterns) {
+        return `
+            <div class="patterns-list">
+                ${patterns.map(pattern => 
+                    `<div class="pattern-item">
+                        <div class="pattern-day">${pattern.day}</div>
+                        <div class="pattern-description">${pattern.description}</div>
+                        <div class="pattern-trend ${pattern.trend}">${pattern.trendLabel}</div>
+                    </div>`
+                ).join('')}
+            </div>
+        `;
+    }
+
+    function generateAchievementHTML(achievement) {
+        return `
+            <div class="achievement-summary">
+                <div class="achievement-score">${achievement.overallScore}%</div>
+                <div class="achievement-label">Weekly Goal Achievement</div>
+            </div>
+            <div class="achievement-details">
+                <div class="achievement-item">
+                    <span class="achievement-metric">Calorie Goals Met</span>
+                    <span class="achievement-count">${achievement.calorieGoalsMet}/7 days</span>
+                </div>
+                <div class="achievement-item">
+                    <span class="achievement-metric">Protein Goals Met</span>
+                    <span class="achievement-count">${achievement.proteinGoalsMet}/7 days</span>
+                </div>
+                <div class="achievement-item">
+                    <span class="achievement-metric">Best Day</span>
+                    <span class="achievement-count">${achievement.bestDay}</span>
+                </div>
+            </div>
+        `;
+    }
+
+    function generateStrategiesHTML(strategies) {
+        return `
+            <div class="strategies-list">
+                ${strategies.map(strategy => 
+                    `<div class="strategy-item">
+                        <div class="strategy-title">${strategy.title}</div>
+                        <div class="strategy-description">${strategy.description}</div>
+                        <div class="strategy-impact">Expected impact: ${strategy.impact}</div>
+                    </div>`
+                ).join('')}
+            </div>
+        `;
+    }
+
+    // Calculation functions for insights
+    function calculateGoalProgress(todayData, goals) {
+        const calorieProgress = todayData.totalCalories || 0;
+        const proteinProgress = todayData.totalProtein || 0;
+        const calorieGoal = goals.calorieGoal || 2000;
+        const proteinGoal = goals.proteinGoal || 100;
+        
+        const caloriePercentage = Math.min((calorieProgress / calorieGoal) * 100, 100);
+        const proteinPercentage = Math.min((proteinProgress / proteinGoal) * 100, 100);
+        
+        let overall = 'On Track';
+        if (caloriePercentage < 70 || proteinPercentage < 70) {
+            overall = 'Needs Attention';
+        } else if (caloriePercentage > 110) {
+            overall = 'Over Target';
+        }
+        
+        const summary = generateProgressSummary(caloriePercentage, proteinPercentage);
+        
+        return {
+            calories: {
+                current: Math.round(calorieProgress),
+                goal: calorieGoal,
+                percentage: Math.round(caloriePercentage)
+            },
+            protein: {
+                current: Math.round(proteinProgress),
+                goal: proteinGoal,
+                percentage: Math.round(proteinPercentage)
+            },
+            overall,
+            summary
+        };
+    }
+
+    function generateProgressSummary(caloriePercentage, proteinPercentage) {
+        if (caloriePercentage < 50) {
+            return "You're behind on your calorie intake today. Consider adding a nutritious snack or larger portions at your next meal.";
+        } else if (caloriePercentage > 110) {
+            return "You've exceeded your calorie goal for today. Focus on lighter options for your remaining meals.";
+        } else if (proteinPercentage < 70) {
+            return "Your protein intake could use a boost. Consider adding lean protein sources to your next meal.";
+        } else {
+            return "Great progress today! You're on track with your nutrition goals.";
+        }
+    }
+
+    function analyzeMealTiming(todayData) {
+        const meals = todayData.meals || [];
+        const now = new Date();
+        
+        if (meals.length === 0) {
+            return {
+                lastMeal: 'No meals logged',
+                eatingWindow: '0 hours',
+                frequency: '0 meals',
+                insight: 'Start logging your meals to get personalized timing insights.'
+            };
+        }
+        
+        const lastMeal = meals[meals.length - 1];
+        const lastMealTime = new Date(lastMeal.timestamp);
+        const timeSinceLastMeal = Math.round((now - lastMealTime) / (1000 * 60 * 60));
+        
+        const firstMeal = meals[0];
+        const firstMealTime = new Date(firstMeal.timestamp);
+        const eatingWindow = Math.round((lastMealTime - firstMealTime) / (1000 * 60 * 60));
+        
+        let insight = '';
+        if (timeSinceLastMeal > 6) {
+            insight = 'It\'s been a while since your last meal. Consider having a balanced snack or your next planned meal.';
+        } else if (eatingWindow > 14) {
+            insight = 'Your eating window is quite long. Consider condensing your meals into a shorter timeframe for better metabolic benefits.';
+        } else {
+            insight = 'Your meal timing looks good! You\'re maintaining a healthy eating pattern.';
+        }
+        
+        return {
+            lastMeal: `${timeSinceLastMeal} hours ago`,
+            eatingWindow: `${eatingWindow} hours`,
+            frequency: `${meals.length} meals`,
+            insight
+        };
+    }
+
+    function generateSmartSuggestions(todayData, goals) {
+        const suggestions = [];
+        const caloriesRemaining = (goals.calorieGoal || 2000) - (todayData.totalCalories || 0);
+        const proteinRemaining = (goals.proteinGoal || 100) - (todayData.totalProtein || 0);
+        
+        if (caloriesRemaining > 300) {
+            suggestions.push({
+                icon: 'utensils',
+                text: `You have ${Math.round(caloriesRemaining)} calories remaining for today`
+            });
+        }
+        
+        if (proteinRemaining > 20) {
+            suggestions.push({
+                icon: 'zap',
+                text: `Add ${Math.round(proteinRemaining)}g more protein to meet your goal`
+            });
+        }
+        
+        if (todayData.meals && todayData.meals.length < 3) {
+            suggestions.push({
+                icon: 'clock',
+                text: 'Consider having regular meals throughout the day'
+            });
+        }
+        
+        suggestions.push({
+            icon: 'droplets',
+            text: 'Stay hydrated - aim for 8 glasses of water today'
+        });
+        
+        return suggestions;
+    }
+
+    function suggestNextMeal(todayData, goals) {
+        const now = new Date();
+        const hour = now.getHours();
+        const caloriesRemaining = (goals.calorieGoal || 2000) - (todayData.totalCalories || 0);
+        const proteinRemaining = (goals.proteinGoal || 100) - (todayData.totalProtein || 0);
+        
+        let mealType = '';
+        let recommendedTime = '';
+        
+        if (hour < 10) {
+            mealType = 'Breakfast';
+            recommendedTime = 'Now';
+        } else if (hour < 14) {
+            mealType = 'Lunch';
+            recommendedTime = hour < 12 ? 'Soon' : 'Now';
+        } else if (hour < 18) {
+            mealType = 'Afternoon Snack';
+            recommendedTime = 'In 1-2 hours';
+        } else {
+            mealType = 'Dinner';
+            recommendedTime = hour < 19 ? 'Soon' : 'Now';
+        }
+        
+        const targetCalories = Math.max(Math.round(caloriesRemaining / 2), 200);
+        const targetProtein = Math.max(Math.round(proteinRemaining / 2), 15);
+        
+        const suggestions = generateMealSuggestions(mealType, targetCalories, targetProtein);
+        
+        return {
+            type: mealType,
+            recommendedTime,
+            targetCalories,
+            targetProtein,
+            suggestions
+        };
+    }
+
+    function generateMealSuggestions(mealType, targetCalories, targetProtein) {
+        const mealSuggestions = {
+            'Breakfast': [
+                { food: 'Greek Yogurt with Berries', reason: 'High protein, antioxidants' },
+                { food: 'Eggs with Whole Grain Toast', reason: 'Complete protein, fiber' },
+                { food: 'Protein Smoothie', reason: 'Quick, portable, customizable' }
+            ],
+            'Lunch': [
+                { food: 'Grilled Chicken Salad', reason: 'Lean protein, vegetables' },
+                { food: 'Quinoa Bowl', reason: 'Complete protein, complex carbs' },
+                { food: 'Turkey Wrap', reason: 'Balanced macros, portable' }
+            ],
+            'Afternoon Snack': [
+                { food: 'Apple with Almond Butter', reason: 'Fiber, healthy fats' },
+                { food: 'Greek Yogurt', reason: 'Protein, probiotics' },
+                { food: 'Nuts and Seeds', reason: 'Protein, healthy fats' }
+            ],
+            'Dinner': [
+                { food: 'Salmon with Vegetables', reason: 'Omega-3s, lean protein' },
+                { food: 'Lean Beef Stir-fry', reason: 'Iron, protein, vegetables' },
+                { food: 'Tofu Curry', reason: 'Plant protein, spices' }
+            ]
+        };
+        
+        return mealSuggestions[mealType] || [
+            { food: 'Balanced meal', reason: 'Meets your nutritional needs' }
+        ];
+    }
+
+    // Calculation functions for weekly and monthly insights
+    function calculateConsistencyScore(weekData) {
+        const daysWithData = weekData.filter(day => day.meals && day.meals.length > 0).length;
+        const totalDays = weekData.length;
+        const mealLogging = Math.round((daysWithData / totalDays) * 100);
+        
+        let goalAdherence = 0;
+        let timing = 0;
+        
+        if (daysWithData > 0) {
+            const daysMetGoals = weekData.filter(day => {
+                const dayCalories = day.totalCalories || 0;
+                const dayGoal = day.calorieGoal || 2000;
+                return Math.abs(dayCalories - dayGoal) / dayGoal <= 0.15; // Within 15%
+            }).length;
+            
+            goalAdherence = Math.round((daysMetGoals / daysWithData) * 100);
+            
+            // Calculate timing consistency (simplified)
+            const daysWithGoodTiming = weekData.filter(day => {
+                return day.meals && day.meals.length >= 3; // At least 3 meals
+            }).length;
+            
+            timing = Math.round((daysWithGoodTiming / daysWithData) * 100);
+        }
+        
+        const overallScore = Math.round((mealLogging + goalAdherence + timing) / 3);
+        
+        let label = 'Excellent';
+        if (overallScore < 60) label = 'Needs Improvement';
+        else if (overallScore < 80) label = 'Good';
+        
+        return {
+            score: overallScore,
+            label,
+            mealLogging,
+            goalAdherence,
+            timing,
+            status: overallScore >= 80 ? 'excellent' : overallScore >= 60 ? 'good' : 'needs-improvement'
+        };
+    }
+
+    function analyzeEatingPatterns(weekData) {
+        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const patterns = [];
+        
+        weekData.forEach((day, index) => {
+            const dayName = dayNames[index];
+            const calories = day.totalCalories || 0;
+            const goalMet = Math.abs(calories - (day.calorieGoal || 2000)) / (day.calorieGoal || 2000) <= 0.15;
+            
+            let description = '';
+            let trend = 'neutral';
+            let trendLabel = 'Stable';
+            
+            if (calories === 0) {
+                description = 'No meals logged';
+                trend = 'down';
+                trendLabel = 'No Data';
+            } else if (goalMet) {
+                description = 'Goal achieved';
+                trend = 'up';
+                trendLabel = 'On Track';
+            } else if (calories < (day.calorieGoal || 2000)) {
+                description = 'Under target';
+                trend = 'down';
+                trendLabel = 'Below Goal';
+            } else {
+                description = 'Over target';
+                trend = 'up';
+                trendLabel = 'Above Goal';
+            }
+            
+            patterns.push({
+                day: dayName,
+                description,
+                trend,
+                trendLabel
+            });
+        });
+        
+        return patterns;
+    }
+
+    function calculateWeeklyGoalAchievement(weekData, goals) {
+        const daysWithData = weekData.filter(day => day.totalCalories > 0);
+        const calorieGoalsMet = daysWithData.filter(day => {
+            const calorieGoal = goals.calorieGoal || 2000;
+            return Math.abs((day.totalCalories || 0) - calorieGoal) / calorieGoal <= 0.15;
+        }).length;
+        
+        const proteinGoalsMet = daysWithData.filter(day => {
+            const proteinGoal = goals.proteinGoal || 100;
+            return (day.totalProtein || 0) >= proteinGoal * 0.9; // 90% of goal
+        }).length;
+        
+        // Find best day
+        let bestDay = 'None';
+        let bestScore = -1;
+        
+        weekData.forEach((day, index) => {
+            if (day.totalCalories > 0) {
+                const calorieScore = Math.max(0, 100 - Math.abs(((day.totalCalories || 0) - (goals.calorieGoal || 2000)) / (goals.calorieGoal || 2000)) * 100);
+                const proteinScore = Math.min(100, ((day.totalProtein || 0) / (goals.proteinGoal || 100)) * 100);
+                const dayScore = (calorieScore + proteinScore) / 2;
+                
+                if (dayScore > bestScore) {
+                    bestScore = dayScore;
+                    bestDay = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][index];
+                }
+            }
+        });
+        
+        const overallScore = Math.round(((calorieGoalsMet + proteinGoalsMet) / (daysWithData.length * 2)) * 100);
+        
+        return {
+            overallScore,
+            calorieGoalsMet,
+            proteinGoalsMet,
+            bestDay
+        };
+    }
+
+    function generateWeeklyStrategies(weekData, goals) {
+        const strategies = [];
+        
+        // Analyze patterns to suggest strategies
+        const avgCalories = weekData.reduce((sum, day) => sum + (day.totalCalories || 0), 0) / weekData.length;
+        const avgProtein = weekData.reduce((sum, day) => sum + (day.totalProtein || 0), 0) / weekData.length;
+        
+        if (avgCalories < (goals.calorieGoal || 2000) * 0.8) {
+            strategies.push({
+                title: 'Increase Calorie Intake',
+                description: 'Add healthy snacks between meals to reach your daily calorie target',
+                impact: 'High - Better energy and goal achievement'
+            });
+        }
+        
+        if (avgProtein < (goals.proteinGoal || 100) * 0.8) {
+            strategies.push({
+                title: 'Boost Protein Intake',
+                description: 'Include a protein source with each meal and snack',
+                impact: 'High - Better muscle maintenance and satiety'
+            });
+        }
+        
+        const inconsistentDays = weekData.filter(day => day.totalCalories === 0).length;
+        if (inconsistentDays > 2) {
+            strategies.push({
+                title: 'Improve Consistency',
+                description: 'Set daily reminders to log all meals and snacks',
+                impact: 'Medium - Better tracking and awareness'
+            });
+        }
+        
+        return strategies;
+    }
+
+    function calculateMonthlyProgress(monthData, goals) {
+        const daysWithData = monthData.filter(day => day.totalCalories > 0);
+        const totalDays = monthData.length;
+        
+        if (daysWithData.length === 0) {
+            return {
+                overall: 'No Data',
+                status: 'no-data',
+                summary: 'Start logging meals to see your monthly progress.'
+            };
+        }
+        
+        const avgCalories = daysWithData.reduce((sum, day) => sum + day.totalCalories, 0) / daysWithData.length;
+        const avgProtein = daysWithData.reduce((sum, day) => sum + (day.totalProtein || 0), 0) / daysWithData.length;
+        
+        const calorieGoal = goals.calorieGoal || 2000;
+        const proteinGoal = goals.proteinGoal || 100;
+        
+        const calorieAccuracy = 100 - Math.abs((avgCalories - calorieGoal) / calorieGoal * 100);
+        const proteinAccuracy = Math.min(100, (avgProtein / proteinGoal) * 100);
+        const consistencyScore = (daysWithData.length / totalDays) * 100;
+        
+        const overallScore = Math.round((calorieAccuracy + proteinAccuracy + consistencyScore) / 3);
+        
+        let overall = 'Excellent';
+        let status = 'excellent';
+        
+        if (overallScore < 60) {
+            overall = 'Needs Improvement';
+            status = 'needs-improvement';
+        } else if (overallScore < 80) {
+            overall = 'Good';
+            status = 'good';
+        }
+        
+        const summary = `Logged ${daysWithData.length}/${totalDays} days with an average of ${Math.round(avgCalories)} calories and ${Math.round(avgProtein)}g protein daily.`;
+        
+        return {
+            overall,
+            status,
+            summary,
+            overallScore,
+            avgCalories: Math.round(avgCalories),
+            avgProtein: Math.round(avgProtein),
+            consistencyDays: daysWithData.length,
+            totalDays
+        };
+    }
+
+    function analyzeHabitFormation(monthData) {
+        const habits = [];
+        
+        // Meal timing habit
+        const mealsWithGoodTiming = monthData.filter(day => {
+            return day.meals && day.meals.length >= 3;
+        }).length;
+        
+        habits.push({
+            name: 'Regular Meals',
+            score: Math.round((mealsWithGoodTiming / monthData.length) * 100),
+            status: mealsWithGoodTiming / monthData.length > 0.8 ? 'strong' : 'developing'
+        });
+        
+        // Protein habit
+        const daysWithGoodProtein = monthData.filter(day => {
+            return (day.totalProtein || 0) >= (day.proteinGoal || 100) * 0.9;
+        }).length;
+        
+        habits.push({
+            name: 'Protein Goals',
+            score: Math.round((daysWithGoodProtein / monthData.length) * 100),
+            status: daysWithGoodProtein / monthData.length > 0.8 ? 'strong' : 'developing'
+        });
+        
+        // Consistency habit
+        const daysLogged = monthData.filter(day => day.totalCalories > 0).length;
+        habits.push({
+            name: 'Meal Logging',
+            score: Math.round((daysLogged / monthData.length) * 100),
+            status: daysLogged / monthData.length > 0.8 ? 'strong' : 'developing'
+        });
+        
+        return habits;
+    }
+
+    function analyzeLongTermTrends(monthData) {
+        const trends = [];
+        
+        // Calculate weekly averages for trend analysis
+        const weeks = [];
+        for (let i = 0; i < monthData.length; i += 7) {
+            const week = monthData.slice(i, i + 7);
+            const weeklyAvg = week.reduce((sum, day) => sum + (day.totalCalories || 0), 0) / week.length;
+            weeks.push(weeklyAvg);
+        }
+        
+        if (weeks.length >= 2) {
+            const firstWeek = weeks[0];
+            const lastWeek = weeks[weeks.length - 1];
+            const trend = lastWeek > firstWeek ? 'increasing' : 'decreasing';
+            const change = Math.abs(lastWeek - firstWeek);
+            
+            trends.push({
+                metric: 'Calorie Intake',
+                trend,
+                change: Math.round(change),
+                description: `${trend} by ${Math.round(change)} calories per day`
+            });
+        }
+        
+        return trends;
+    }
+
+    function identifyAchievements(monthData, goals) {
+        const achievements = [];
+        
+        const daysLogged = monthData.filter(day => day.totalCalories > 0).length;
+        if (daysLogged >= 25) {
+            achievements.push('🎯 Consistency Champion - Logged 25+ days');
+        }
+        
+        const perfectDays = monthData.filter(day => {
+            const calorieGoal = goals.calorieGoal || 2000;
+            const proteinGoal = goals.proteinGoal || 100;
+            const caloriesOnTarget = Math.abs((day.totalCalories || 0) - calorieGoal) / calorieGoal <= 0.1;
+            const proteinOnTarget = (day.totalProtein || 0) >= proteinGoal * 0.9;
+            return caloriesOnTarget && proteinOnTarget;
+        }).length;
+        
+        if (perfectDays >= 7) {
+            achievements.push('⭐ Perfect Week - 7+ days hitting all goals');
+        }
+        
+        const streakDays = calculateLongestStreak(monthData);
+        if (streakDays >= 7) {
+            achievements.push(`🔥 ${streakDays}-Day Streak - Consistent logging`);
+        }
+        
+        return achievements;
+    }
+
+    function calculateLongestStreak(monthData) {
+        let currentStreak = 0;
+        let longestStreak = 0;
+        
+        monthData.forEach(day => {
+            if (day.totalCalories > 0) {
+                currentStreak++;
+                longestStreak = Math.max(longestStreak, currentStreak);
+            } else {
+                currentStreak = 0;
+            }
+        });
+        
+        return longestStreak;
+    }
+
+    function generateNextMonthStrategy(monthData, goals) {
+        const strategies = [];
+        
+        // Analyze current performance
+        const daysLogged = monthData.filter(day => day.totalCalories > 0).length;
+        const avgCalories = monthData.reduce((sum, day) => sum + (day.totalCalories || 0), 0) / daysLogged;
+        const avgProtein = monthData.reduce((sum, day) => sum + (day.totalProtein || 0), 0) / daysLogged;
+        
+        if (daysLogged < 20) {
+            strategies.push({
+                area: 'Consistency',
+                goal: 'Log meals 25+ days',
+                action: 'Set daily reminders and use quick-add features'
+            });
+        }
+        
+        if (avgCalories < (goals.calorieGoal || 2000) * 0.9) {
+            strategies.push({
+                area: 'Calorie Intake',
+                goal: 'Reach daily calorie targets',
+                action: 'Add healthy snacks and larger portions'
+            });
+        }
+        
+        if (avgProtein < (goals.proteinGoal || 100) * 0.8) {
+            strategies.push({
+                area: 'Protein Intake',
+                goal: 'Meet daily protein goals',
+                action: 'Include protein with every meal and snack'
+            });
+        }
+        
+        return strategies;
+    }
+
+    // Data fetching functions (simplified for Firebase integration)
+    async function getTodaysNutritionData() {
+        if (!currentUser) return { totalCalories: 0, totalProtein: 0, meals: [] };
+        
+        // Get today's date
+        const today = new Date().toISOString().split('T')[0];
+        
+        try {
+            const docRef = doc(db, 'users', currentUser.uid, 'nutrition', today);
+            const docSnap = await getDoc(docRef);
+            
+            if (docSnap.exists()) {
+                return docSnap.data();
+            } else {
+                return { totalCalories: 0, totalProtein: 0, meals: [] };
+            }
+        } catch (error) {
+            console.error('Error fetching today\'s data:', error);
+            return { totalCalories: 0, totalProtein: 0, meals: [] };
+        }
+    }
+
+    async function getWeeklyNutritionData() {
+        if (!currentUser) return [];
+        
+        const weekData = [];
+        const today = new Date();
+        
+        // Get the last 7 days
+        for (let i = 6; i >= 0; i--) {
+            const date = new Date(today);
+            date.setDate(date.getDate() - i);
+            const dateStr = date.toISOString().split('T')[0];
+            
+            try {
+                const docRef = doc(db, 'users', currentUser.uid, 'nutrition', dateStr);
+                const docSnap = await getDoc(docRef);
+                
+                if (docSnap.exists()) {
+                    weekData.push(docSnap.data());
+                } else {
+                    weekData.push({ totalCalories: 0, totalProtein: 0, meals: [] });
+                }
+            } catch (error) {
+                console.error(`Error fetching data for ${dateStr}:`, error);
+                weekData.push({ totalCalories: 0, totalProtein: 0, meals: [] });
+            }
+        }
+        
+        return weekData;
+    }
+
+    async function getMonthlyNutritionData() {
+        if (!currentUser) return [];
+        
+        const monthData = [];
+        const today = new Date();
+        
+        // Get the last 30 days
+        for (let i = 29; i >= 0; i--) {
+            const date = new Date(today);
+            date.setDate(date.getDate() - i);
+            const dateStr = date.toISOString().split('T')[0];
+            
+            try {
+                const docRef = doc(db, 'users', currentUser.uid, 'nutrition', dateStr);
+                const docSnap = await getDoc(docRef);
+                
+                if (docSnap.exists()) {
+                    monthData.push(docSnap.data());
+                } else {
+                    monthData.push({ totalCalories: 0, totalProtein: 0, meals: [] });
+                }
+            } catch (error) {
+                console.error(`Error fetching data for ${dateStr}:`, error);
+                monthData.push({ totalCalories: 0, totalProtein: 0, meals: [] });
+            }
+        }
+        
+        return monthData;
+    }
+
+    async function getUserGoals() {
+        if (!currentUser) return { calorieGoal: 2000, proteinGoal: 100 };
+        
+        try {
+            const docRef = doc(db, 'users', currentUser.uid);
+            const docSnap = await getDoc(docRef);
+            
+            if (docSnap.exists()) {
+                const userData = docSnap.data();
+                return {
+                    calorieGoal: userData.calorieGoal || 2000,
+                    proteinGoal: userData.proteinGoal || 100
+                };
+            } else {
+                return { calorieGoal: 2000, proteinGoal: 100 };
+            }
+        } catch (error) {
+            console.error('Error fetching user goals:', error);
+            return { calorieGoal: 2000, proteinGoal: 100 };
+        }
+    }
+
+    // Error handling functions
+    function displayDailyInsightsError() {
+        const container = document.getElementById('daily-goal-progress');
+        if (container) {
+            container.innerHTML = '<p class="error-message">Unable to load daily insights. Please try again later.</p>';
+        }
+    }
+
+    function displayWeeklyInsightsError() {
+        const container = document.getElementById('weekly-consistency');
+        if (container) {
+            container.innerHTML = '<p class="error-message">Unable to load weekly insights. Please try again later.</p>';
+        }
+    }
+
+    function displayMonthlyInsightsError() {
+        const container = document.getElementById('monthly-progress');
+        if (container) {
+            container.innerHTML = '<p class="error-message">Unable to load monthly insights. Please try again later.</p>';
+        }
+    }
+
+    // Sample insights fallback function
+    function displaySampleInsights() {
+        console.log('Displaying sample insights as fallback...');
+        
+        // Display sample daily insights
+        displayDailyInsights({
+            goalProgress: {
+                calories: { current: 1850, goal: 2000, percentage: 93 },
+                protein: { current: 95, goal: 100, percentage: 95 },
+                overall: 'On Track',
+                summary: 'Great progress today! You\'re on track with your nutrition goals.'
+            },
+            mealTiming: {
+                lastMeal: '3 hours ago',
+                eatingWindow: '10 hours',
+                frequency: '3 meals',
+                insight: 'Your meal timing looks good! You\'re maintaining a healthy eating pattern.'
+            },
+            smartSuggestions: [
+                { icon: 'utensils', text: 'You have 150 calories remaining for today' },
+                { icon: 'zap', text: 'Add 5g more protein to meet your goal' },
+                { icon: 'droplets', text: 'Stay hydrated - aim for 8 glasses of water today' }
+            ],
+            nextMeal: {
+                type: 'Dinner',
+                recommendedTime: 'Soon',
+                targetCalories: 400,
+                targetProtein: 25,
+                suggestions: [
+                    { food: 'Salmon with Vegetables', reason: 'Omega-3s, lean protein' },
+                    { food: 'Lean Beef Stir-fry', reason: 'Iron, protein, vegetables' }
+                ]
+            }
+        });
+        
+        // Initialize icons
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
         }
     }
 
