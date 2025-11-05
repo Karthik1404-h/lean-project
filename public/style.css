@@ -3369,6 +3369,13 @@ input[type="file"] { display: none; }
 /* History Section - FIXED TO MATCH WORKING SECTIONS */
 .history-section {
     padding: var(--spacing-xl);
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 .history-nav {
@@ -3430,9 +3437,14 @@ input[type="file"] { display: none; }
 .months-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 1.5rem;
-    max-width: 100%;
+    gap: 1.2rem;
+    max-width: 900px;
+    width: 100%;
     margin: 0 auto;
+    padding: 0;
+    box-sizing: border-box;
+    justify-self: center;
+    place-self: center;
 }
 
 .month-card {
@@ -3689,6 +3701,9 @@ input[type="file"] { display: none; }
     .months-grid {
         grid-template-columns: repeat(3, 1fr);
         gap: 1rem;
+        margin: 0 auto;
+        justify-self: center;
+        place-self: center;
     }
 }
 
@@ -3696,17 +3711,34 @@ input[type="file"] { display: none; }
     .months-grid {
         grid-template-columns: repeat(2, 1fr);
         gap: 1rem;
+        padding: 0 var(--spacing-sm);
+        margin: 0 auto;
+        justify-self: center;
+        place-self: center;
+    }
+    
+    .history-section {
+        padding: var(--spacing-lg);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
     }
 }
 
 @media (max-width: 600px) {
     .history-section {
         padding: var(--spacing-md);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
     }
     
     .months-grid {
         grid-template-columns: 1fr;
         gap: 1rem;
+        margin: 0 auto;
+        justify-self: center;
+        place-self: center;
     }
     
     .weeks-container,
@@ -4381,57 +4413,7 @@ input[type="file"] { display: none; }
 }
 
 
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-    gap: 1.5rem;
-}
-
-    background: var(--card-background);
-    border-radius: 12px;
-    padding: var(--spacing-lg);
-    box-shadow: 0 4px 6px var(--shadow-light);
-    border: 1px solid var(--border-color);
-}
-
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: var(--spacing-lg);
-}
-
-    padding: 4px 12px;
-    border-radius: 16px;
-    font-size: var(--font-size-xs);
-    font-weight: 500;
-    background: var(--accent-color);
-    color: white;
-}
-
-    margin-bottom: var(--spacing-md);
-    padding: var(--spacing-md);
-    background: var(--background-start);
-    border-radius: 8px;
-}
-
-    font-size: var(--font-size-sm);
-    color: var(--text-light);
-    margin-bottom: var(--spacing-xs);
-}
-
-    font-size: var(--font-size-lg);
-    font-weight: 600;
-    padding: 4px 12px;
-    border-radius: 16px;
-    display: inline-block;
-}
-
-    background: var(--secondary-color);
-    color: white;
-}
-
-    background: var(--primary-color);
-    color: white;
-}
+ 
 
 .next-meal-suggestion h4,
 .weekly-patterns h4,
@@ -4458,21 +4440,7 @@ input[type="file"] { display: none; }
     border-left: 3px solid var(--primary-color);
 }
 
-    text-align: center;
-    padding: var(--spacing-xl);
-    color: var(--text-light);
-}
 
-    font-size: 32px;
-    margin-bottom: var(--spacing-md);
-    color: var(--primary-color);
-}
-
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: var(--spacing-md);
-    margin-bottom: var(--spacing-lg);
-}
 
 .summary-item {
     text-align: center;
@@ -4585,24 +4553,12 @@ input[type="file"] { display: none; }
     cursor: pointer;
 }
 
-    background: var(--card-background);
-    border-radius: 12px;
-    border: 1px solid var(--border-color);
-    padding: var(--spacing-lg);
-    max-height: 400px;
-    overflow-y: auto;
-}
-
+   
 .habit-changes {
     margin-bottom: var(--spacing-lg);
 }
 
-    margin-bottom: var(--spacing-sm);
-    padding: var(--spacing-sm);
-    background: var(--background-start);
-    border-radius: 6px;
-}
-
+    
 .habit-changes ul {
     list-style: none;
     padding: 0;
@@ -4620,8 +4576,7 @@ input[type="file"] { display: none; }
 @media (max-width: 768px) {
     .metrics-grid,
     .goals-grid,
-        grid-template-columns: 1fr;
-    }
+        
     
     .current-stats .stats-display {
         grid-template-columns: 1fr;
@@ -5337,6 +5292,128 @@ input[type="file"] { display: none; }
 
 .insights-view.active {
     display: block;
+}
+
+/* Specific Insights Section */
+.specific-insights {
+    margin-top: var(--spacing-xl);
+    padding-top: var(--spacing-lg);
+    border-top: 1px solid var(--border-color);
+}
+
+.specific-insights h4 {
+    color: var(--primary-color);
+    font-size: var(--font-size-lg);
+    margin-bottom: var(--spacing-md);
+    font-weight: 600;
+}
+
+.specific-insight-item {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    margin-bottom: var(--spacing-sm);
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(16, 185, 129, 0.05));
+    border-radius: var(--border-radius);
+    border-left: 3px solid var(--secondary-color);
+}
+
+.specific-insight-item .insight-icon {
+    width: 18px;
+    height: 18px;
+    color: var(--secondary-color);
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+
+/* Meal Recommendations Section */
+.meal-recommendations {
+    margin-top: var(--spacing-xl);
+    padding-top: var(--spacing-lg);
+    border-top: 1px solid var(--border-color);
+}
+
+.meal-recommendations h4 {
+    color: var(--primary-color);
+    font-size: var(--font-size-lg);
+    margin-bottom: var(--spacing-lg);
+    font-weight: 600;
+}
+
+.meal-recommendation-item {
+    background: var(--card-background);
+    border-radius: var(--border-radius);
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+    box-shadow: 0 2px 8px var(--shadow-light);
+    border: 1px solid var(--border-color);
+    transition: all 0.3s ease;
+}
+
+.meal-recommendation-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px var(--shadow-medium);
+}
+
+.meal-header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-sm);
+}
+
+.meal-icon {
+    width: 20px;
+    height: 20px;
+    color: var(--accent-color);
+}
+
+.meal-label {
+    font-weight: 600;
+    color: var(--text-color);
+    font-size: var(--font-size-base);
+}
+
+.meal-suggestion {
+    color: var(--text-light);
+    line-height: 1.5;
+    margin: 0;
+    font-size: var(--font-size-sm);
+    padding-left: calc(20px + var(--spacing-sm));
+}
+
+/* Weekly Actual Data Section */
+.weekly-actual-data {
+    margin-top: var(--spacing-xl);
+    padding-top: var(--spacing-lg);
+    border-top: 1px solid var(--border-color);
+}
+
+.weekly-actual-data h4 {
+    color: var(--primary-color);
+    font-size: var(--font-size-lg);
+    margin-bottom: var(--spacing-md);
+    font-weight: 600;
+}
+
+.actual-data-item {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    margin-bottom: var(--spacing-sm);
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(245, 158, 11, 0.05));
+    border-radius: var(--border-radius);
+    border-left: 3px solid var(--accent-color);
+}
+
+.actual-data-item .data-icon {
+    width: 18px;
+    height: 18px;
+    color: var(--accent-color);
+    margin-top: 2px;
+    flex-shrink: 0;
 }
 
 /* Insights Actions */

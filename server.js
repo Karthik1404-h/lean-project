@@ -134,40 +134,196 @@ function base64ToGenerativePart(base64Image) {
 }
 
 /**
+ * Simple function to parse food detection JSON arrays.
+ */
+function parseSimpleJsonArray(text) {
+    console.log('🔍 Parsing simple JSON array, length:', text?.length, 'characters');
+    console.log('🔍 Raw response start:', text?.substring(0, 200) + '...');
+    
+    // Remove any markdown code blocks
+    let cleanText = text
+        .replace(/```json\n?/g, '')
+        .replace(/```\n?/g, '')
+        .replace(/\r\n/g, '\n')
+        .replace(/\r/g, '\n')
+        .trim();
+    
+    // For simple arrays, try direct parsing first
+    try {
+        const parsed = JSON.parse(cleanText);
+        console.log('✅ Direct JSON parse successful:', parsed);
+        return parsed;
+    } catch (e) {
+        console.log('❌ Direct parse failed:', e.message);
+        
+        // Find array boundaries
+        const firstBracket = cleanText.indexOf('[');
+        const lastBracket = cleanText.lastIndexOf(']');
+        
+        if (firstBracket === -1 || lastBracket === -1 || firstBracket >= lastBracket) {
+            console.log('❌ No valid JSON array found');
+            throw new Error("No valid JSON array found in response");
+        }
+        
+        const arrayString = cleanText.substring(firstBracket, lastBracket + 1);
+        
+        try {
+            const parsed = JSON.parse(arrayString);
+            console.log('✅ Array extraction successful:', parsed);
+            return parsed;
+        } catch (arrayError) {
+            console.log('❌ Array extraction failed:', arrayError.message);
+            throw new Error("Invalid JSON array in response");
+        }
+    }
+}
+
+/**
  * A robust function to parse JSON from the model's text response.
  */
 function parseJsonResponse(text) {
-    console.log('🔍 Raw API response:', text?.substring(0, 200) + '...');
+    console.log('🔍 Raw API response length:', text?.length, 'characters');
+    console.log('🔍 Raw API response start:', text?.substring(0, 300) + '...');
     
-    // Remove any markdown code blocks
-    let cleanText = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    // Remove any markdown code blocks and clean the text
+    let cleanText = text
+        .replace(/```json\n?/g, '')
+        .replace(/```\n?/g, '')
+        .replace(/\r\n/g, '\n')
+        .replace(/\r/g, '\n')
+        .trim();
     
-    const firstBracket = cleanText.indexOf('[');
-    const lastBracket = cleanText.lastIndexOf(']');
+    // Find JSON boundaries more carefully
     const firstBrace = cleanText.indexOf('{');
     const lastBrace = cleanText.lastIndexOf('}');
-
-    let jsonString;
-
-    if (firstBracket !== -1 && lastBracket !== -1) {
-        jsonString = cleanText.substring(firstBracket, lastBracket + 1);
-    } else if (firstBrace !== -1 && lastBrace !== -1) {
-        jsonString = cleanText.substring(firstBrace, lastBrace + 1);
-    } else {
-        // Try to parse the entire cleaned text
-        try {
-            return JSON.parse(cleanText);
-        } catch (e) {
-            console.log('❌ Failed to parse JSON from response:', cleanText?.substring(0, 500));
-            throw new Error("No valid JSON found in response");
-        }
+    
+    if (firstBrace === -1 || lastBrace === -1 || firstBrace >= lastBrace) {
+        console.log('❌ No valid JSON object found in response');
+        throw new Error("No valid JSON found in response");
     }
+    
+    let jsonString = cleanText.substring(firstBrace, lastBrace + 1);
     
     try {
         return JSON.parse(jsonString);
     } catch (e) {
-        console.log('❌ Failed to parse extracted JSON:', jsonString?.substring(0, 500));
-        throw new Error("Invalid JSON structure in response");
+        console.log('❌ Initial JSON parse failed:', e.message);
+        console.log('❌ Problematic JSON substring:', jsonString.substring(0, 500) + '...');
+        
+        // Advanced JSON repair attempts
+        try {
+            let fixedJson = jsonString;
+            
+            // Remove control characters and fix encoding issues
+            fixedJson = fixedJson.replace(/[\x00-\x1F\x7F]/g, '');
+            
+            // Fix truncated strings by finding incomplete quotes and closing them
+            const lines = fixedJson.split('\n');
+            const repairedLines = [];
+            let inString = false;
+            let braceCount = 0;
+            let bracketCount = 0;
+            
+            for (let i = 0; i < lines.length; i++) {
+                let line = lines[i];
+                let repairedLine = '';
+                
+                for (let j = 0; j < line.length; j++) {
+                    const char = line[j];
+                    
+                    if (char === '"' && (j === 0 || line[j-1] !== '\\')) {
+                        inString = !inString;
+                    } else if (!inString) {
+                        if (char === '{') braceCount++;
+                        else if (char === '}') braceCount--;
+                        else if (char === '[') bracketCount++;
+                        else if (char === ']') bracketCount--;
+                    }
+                    
+                    repairedLine += char;
+                }
+                
+                // If we're in a string at the end of a line and it's not the last line, close it
+                if (inString && i < lines.length - 1) {
+                    repairedLine += '"';
+                    inString = false;
+                    // Add a comma if needed
+                    if (!repairedLine.trim().endsWith(',') && !repairedLine.trim().endsWith('{') && !repairedLine.trim().endsWith('[')) {
+                        repairedLine += ',';
+                    }
+                }
+                
+                repairedLines.push(repairedLine);
+            }
+            
+            fixedJson = repairedLines.join('\n');
+            
+            // Close any unclosed arrays or objects
+            while (bracketCount > 0) {
+                fixedJson += ']';
+                bracketCount--;
+            }
+            while (braceCount > 0) {
+                fixedJson += '}';
+                braceCount--;
+            }
+            
+            // Remove trailing commas
+            fixedJson = fixedJson
+                .replace(/,(\s*[\]}])/g, '$1')
+                .replace(/,\s*$/, '');
+            
+            console.log('🔧 Attempting advanced JSON repair...');
+            console.log('🔧 Repaired JSON start:', fixedJson.substring(0, 300) + '...');
+            
+            return JSON.parse(fixedJson);
+            
+        } catch (fixError) {
+            console.log('❌ Advanced JSON repair failed:', fixError.message);
+            
+            // Last resort: try to extract what we can field by field
+            try {
+                console.log('🔧 Attempting field-by-field extraction...');
+                const result = {};
+                
+                // Extract simple fields
+                const extractField = (fieldName, defaultValue = null) => {
+                    const regex = new RegExp(`"${fieldName}"\\s*:\\s*"([^"]*)"`, 'i');
+                    const match = jsonString.match(regex);
+                    return match ? match[1] : defaultValue;
+                };
+                
+                const extractNumberField = (fieldName, defaultValue = 0) => {
+                    const regex = new RegExp(`"${fieldName}"\\s*:\\s*(\\d+)`, 'i');
+                    const match = jsonString.match(regex);
+                    return match ? parseInt(match[1]) : defaultValue;
+                };
+                
+                result.calorieStatus = extractField('calorieStatus', 'unknown');
+                result.proteinStatus = extractField('proteinStatus', 'unknown');
+                result.mealTiming = extractField('mealTiming', 'Unable to determine meal timing');
+                result.nutritionBalance = extractField('nutritionBalance', 'Unable to assess nutrition balance');
+                result.nextMealSuggestion = extractField('nextMealSuggestion', 'Focus on balanced nutrition');
+                result.healthScore = extractNumberField('healthScore', 50);
+                
+                // For arrays and objects, provide defaults
+                result.recommendations = ['Focus on meeting your calorie goals', 'Increase protein intake', 'Maintain consistent meal timing'];
+                result.mealRecommendations = {
+                    breakfast: 'Include protein-rich foods',
+                    lunch: 'Balance carbs and protein',
+                    dinner: 'Lean protein with vegetables',
+                    snack: 'Healthy protein snack'
+                };
+                result.specificInsights = ['Unable to extract specific insights due to parsing error'];
+                
+                console.log('✅ Field-by-field extraction successful');
+                return result;
+                
+            } catch (extractError) {
+                console.log('❌ Field extraction failed:', extractError.message);
+                throw new Error("Complete JSON parsing failure");
+            }
+        }
     }
 }
 
@@ -215,7 +371,7 @@ app.post('/api/ai-insights/daily', async (req, res) => {
       return res.status(400).json({ error: 'Today\'s nutrition data is required.' });
     }
 
-    const prompt = `As a nutrition AI assistant, analyze today's eating data and provide personalized daily insights.
+    const prompt = `As a nutrition AI assistant, analyze today's eating data and provide highly personalized daily insights using SPECIFIC DATA from the user's actual consumption.
 
 USER PROFILE:
 - Age: ${userProfile?.age || 'Unknown'}
@@ -223,38 +379,100 @@ USER PROFILE:
 - Activity Level: ${userProfile?.activityLevel || 'Unknown'}
 - Goal: ${userProfile?.goal || 'Unknown'}
 
-TODAY'S DATA:
-- Calories: ${todayData.totals?.calories || 0}/${goals?.calories || 2000}
-- Protein: ${todayData.totals?.protein || 0}g/${goals?.protein || 120}g
-- Carbs: ${todayData.totals?.carbs || 0}g
-- Fat: ${todayData.totals?.fat || 0}g
-- Meals logged: ${Object.keys(todayData.meals || {}).filter(meal => todayData.meals[meal]?.length > 0).length}
+TODAY'S ACTUAL DATA:
+- Calories consumed: ${todayData.totals?.calories || 0} out of ${goals?.calories || 2000} goal (${Math.round(((todayData.totals?.calories || 0) / (goals?.calories || 2000)) * 100)}%)
+- Protein consumed: ${todayData.totals?.protein || 0}g out of ${goals?.protein || 120}g goal (${Math.round(((todayData.totals?.protein || 0) / (goals?.protein || 120)) * 100)}%)
+- Carbs: ${todayData.totals?.carbs || 0}g, Fat: ${todayData.totals?.fat || 0}g
+- Meals logged: ${Object.keys(todayData.meals || {}).filter(meal => todayData.meals[meal]?.length > 0).length}/4
 
-FOODS CONSUMED:
+SPECIFIC FOODS CONSUMED TODAY:
 ${Object.entries(todayData.meals || {}).map(([meal, foods]) => 
-  `${meal}: ${foods.map(f => f.name).join(', ')}`
+  `${meal.charAt(0).toUpperCase() + meal.slice(1)}: ${foods.length > 0 ? foods.map(f => `${f.name} (${f.calories || 0} cal, ${f.protein || 0}g protein)`).join(', ') : 'No foods logged'}`
 ).join('\n')}
 
-Provide insights as JSON:
+INSTRUCTIONS: 
+- Reference SPECIFIC foods, numbers, and percentages from today's data
+- Make meal recommendations based on what they've actually eaten
+- Use their actual calorie/protein numbers in insights
+- Mention specific foods they consumed today
+- Base recommendations on their actual eating patterns
+- IMPORTANT: Keep all text fields CONCISE (under 100 characters each)
+- Ensure proper JSON formatting with escaped quotes
+
+Provide concise insights as valid JSON:
 {
   "calorieStatus": "on-track|under|over",
-  "proteinStatus": "excellent|good|needs-improvement",
-  "mealTiming": "Comment on meal distribution",
-  "nutritionBalance": "Assessment of macro balance",
-  "recommendations": ["recommendation1", "recommendation2", "recommendation3"],
-  "nextMealSuggestion": "Specific suggestion for next meal",
-  "healthScore": number_0_to_100
+  "proteinStatus": "excellent|good|needs-improvement", 
+  "mealTiming": "Brief comment on meal distribution",
+  "nutritionBalance": "Brief assessment with actual numbers",
+  "recommendations": [
+    "Short recommendation 1 with data",
+    "Short recommendation 2 with data", 
+    "Short recommendation 3 with data"
+  ],
+  "nextMealSuggestion": "Brief meal suggestion",
+  "healthScore": number_0_to_100,
+  "mealRecommendations": {
+    "breakfast": "Brief breakfast suggestion",
+    "lunch": "Brief lunch suggestion",
+    "dinner": "Brief dinner suggestion",
+    "snack": "Brief snack suggestion"
+  },
+  "specificInsights": [
+    "Brief insight about food eaten",
+    "Brief insight about numbers",
+    "Brief insight about pattern"
+  ]
 }
 
-Keep recommendations specific and actionable. Focus on helping achieve their goals.`;
+Keep recommendations highly personalized using their actual data. Always reference specific foods, calories, or percentages.`;
 
     try {
-      const result = await retryWithBackoff(() => model.generateContent([prompt]), 3, 500);
+      // Add specific generation config to limit response length
+      const generationConfig = {
+        maxOutputTokens: 800, // Limit response length
+        temperature: 0.3,     // Lower temperature for more consistent JSON
+      };
+      
+      const result = await retryWithBackoff(() => 
+        model.generateContent([prompt], { generationConfig }), 3, 500);
       const text = result.response.text();
       console.log('Daily Insights Response:', text);
 
       const insights = parseJsonResponse(text);
-      res.json(insights);
+      
+      // Validate that we have the required fields
+      if (!insights || typeof insights !== 'object') {
+        throw new Error('Invalid insights object received');
+      }
+      
+      // Ensure we have all required fields with defaults
+      const validatedInsights = {
+        calorieStatus: insights.calorieStatus || 'unknown',
+        proteinStatus: insights.proteinStatus || 'unknown',
+        mealTiming: insights.mealTiming || `You've logged ${Object.keys(todayData.meals || {}).filter(meal => todayData.meals[meal]?.length > 0).length} meals today.`,
+        nutritionBalance: insights.nutritionBalance || `You've consumed ${todayData.totals?.calories || 0} calories and ${todayData.totals?.protein || 0}g protein.`,
+        recommendations: Array.isArray(insights.recommendations) ? insights.recommendations : [
+          `You have ${Math.max(0, (goals?.calories || 2000) - (todayData.totals?.calories || 0))} calories remaining today`,
+          `Add ${Math.max(0, (goals?.protein || 120) - (todayData.totals?.protein || 0))}g more protein to reach your goal`,
+          'Focus on balanced meals with protein, carbs, and healthy fats'
+        ],
+        nextMealSuggestion: insights.nextMealSuggestion || 'Include a lean protein source with vegetables and complex carbs',
+        healthScore: typeof insights.healthScore === 'number' ? insights.healthScore : 50,
+        mealRecommendations: insights.mealRecommendations || {
+          breakfast: "Greek yogurt with berries and nuts",
+          lunch: "Grilled chicken salad with quinoa",
+          dinner: "Salmon with roasted vegetables",
+          snack: "Handful of almonds or protein smoothie"
+        },
+        specificInsights: Array.isArray(insights.specificInsights) ? insights.specificInsights : [
+          `Today you consumed ${todayData.totals?.calories || 0} calories`,
+          `Your protein intake is ${todayData.totals?.protein || 0}g`,
+          `You logged ${Object.keys(todayData.meals || {}).filter(meal => todayData.meals[meal]?.length > 0).length} meals`
+        ]
+      };
+      
+      res.json(validatedInsights);
     } catch (parseError) {
       console.log('⚠️ AI response parsing failed, providing fallback insights');
       
@@ -269,15 +487,28 @@ Keep recommendations specific and actionable. Focus on helping achieve their goa
                      currentCalories > calorieGoal * 1.2 ? 'over' : 'on-track',
         proteinStatus: currentProtein >= proteinGoal * 0.9 ? 'excellent' :
                       currentProtein >= proteinGoal * 0.7 ? 'good' : 'needs-improvement',
-        mealTiming: `You've logged ${Object.keys(todayData.meals || {}).filter(meal => todayData.meals[meal]?.length > 0).length} meals today.`,
-        nutritionBalance: 'Focus on getting a balance of protein, carbs, and healthy fats in each meal.',
+        mealTiming: `You've logged ${Object.keys(todayData.meals || {}).filter(meal => todayData.meals[meal]?.length > 0).length} meals today out of 4 possible meals.`,
+        nutritionBalance: `You've consumed ${currentCalories} calories (${Math.round((currentCalories/calorieGoal)*100)}% of goal) and ${currentProtein}g protein (${Math.round((currentProtein/proteinGoal)*100)}% of goal).`,
         recommendations: [
-          'Track your meals consistently for better insights',
-          'Aim for balanced macronutrients throughout the day',
-          'Stay hydrated and eat regular meals'
+          `You need ${Math.max(0, calorieGoal - currentCalories)} more calories to reach your ${calorieGoal} calorie goal`,
+          `Add ${Math.max(0, proteinGoal - currentProtein)}g more protein to hit your ${proteinGoal}g target`,
+          'Focus on whole foods and balanced meals for optimal nutrition'
         ],
-        nextMealSuggestion: 'Try including a lean protein source with vegetables and complex carbs.',
-        healthScore: Math.min(100, Math.max(20, Math.round((currentCalories / calorieGoal) * 50 + (currentProtein / proteinGoal) * 30 + 20)))
+        nextMealSuggestion: currentProtein < proteinGoal * 0.7 ? 
+          'Include a high-protein food like chicken, fish, eggs, or Greek yogurt in your next meal' :
+          'Add some vegetables and complex carbs to balance your nutrition',
+        healthScore: Math.min(100, Math.max(20, Math.round((currentCalories / calorieGoal) * 50 + (currentProtein / proteinGoal) * 30 + 20))),
+        mealRecommendations: {
+          breakfast: "Greek yogurt with berries and nuts for protein and antioxidants",
+          lunch: "Grilled chicken salad with mixed vegetables and quinoa",
+          dinner: "Salmon with roasted vegetables and sweet potato",
+          snack: currentProtein < proteinGoal ? "Protein smoothie or handful of almonds" : "Fresh fruit or vegetable sticks"
+        },
+        specificInsights: [
+          `Today you've eaten ${currentCalories} calories, which is ${currentCalories < calorieGoal ? 'below' : currentCalories > calorieGoal ? 'above' : 'on track with'} your goal`,
+          `Your protein intake of ${currentProtein}g is ${currentProtein >= proteinGoal ? 'meeting' : 'below'} your target`,
+          `You've logged food for ${Object.keys(todayData.meals || {}).filter(meal => todayData.meals[meal]?.length > 0).length} out of 4 meal times`
+        ]
       };
       
       res.json(fallbackInsights);
@@ -306,44 +537,88 @@ app.post('/api/ai-insights/weekly', async (req, res) => {
       return calories >= goal * 0.8 && calories <= goal * 1.2;
     }).length;
 
-    const prompt = `Analyze this week's nutrition patterns and provide insights.
+    const prompt = `Analyze this week's nutrition patterns and provide insights using SPECIFIC DATA from the user's weekly consumption.
 
 USER PROFILE:
 - Goal: ${userProfile?.goal || 'Unknown'}
 - Target daily calories: ${goals?.calories || 2000}
 - Target daily protein: ${goals?.protein || 120}g
 
-WEEKLY SUMMARY:
-- Days logged: ${totalDays}/7
-- Average calories: ${Math.round(avgCalories)}
-- Average protein: ${Math.round(avgProtein)}g  
-- Days on track: ${daysOnTrack}/${totalDays}
+WEEKLY ACTUAL DATA:
+- Days logged: ${totalDays}/7 days
+- Average calories: ${Math.round(avgCalories)} (target: ${goals?.calories || 2000})
+- Average protein: ${Math.round(avgProtein)}g (target: ${goals?.protein || 120}g)  
+- Days meeting calorie goals: ${daysOnTrack}/${totalDays} (${Math.round((daysOnTrack/totalDays)*100)}%)
+- Total weekly calories: ${Math.round(avgCalories * totalDays)}
+- Weekly protein total: ${Math.round(avgProtein * totalDays)}g
 
-DAILY BREAKDOWN:
-${weeklyData.map((day, i) => 
-  `Day ${i+1}: ${day.totals?.calories || 0}cal, ${day.totals?.protein || 0}g protein`
-).join('\n')}
+DAILY BREAKDOWN WITH SPECIFIC FOODS:
+${weeklyData.map((day, i) => {
+  const dayMeals = day.meals || {};
+  const allFoods = Object.values(dayMeals).flat().map(f => f.name).slice(0, 3);
+  return `Day ${i+1}: ${day.totals?.calories || 0}cal, ${day.totals?.protein || 0}g protein - Foods: ${allFoods.join(', ') || 'No foods logged'}`;
+}).join('\n')}
 
-Provide analysis as JSON:
+INSTRUCTIONS:
+- Reference specific numbers from their weekly data
+- Mention actual foods they consumed
+- Use their exact calorie and protein numbers
+- Compare to their specific goals
+- Keep all text fields CONCISE (under 80 characters each)
+
+Provide concise analysis as valid JSON:
 {
   "consistencyScore": number_0_to_100,
   "trendDirection": "improving|stable|declining",
-  "strongestDay": "day_name_or_number",
-  "weakestDay": "day_name_or_number", 
-  "patterns": ["pattern1", "pattern2"],
+  "strongestDay": "Brief day description with numbers",
+  "weakestDay": "Brief day description with numbers", 
+  "patterns": ["Brief pattern 1", "Brief pattern 2"],
   "weeklyGoalStatus": "excellent|good|needs-work",
-  "improvementAreas": ["area1", "area2"],
-  "nextWeekFocus": "specific_focus_area",
-  "motivationalMessage": "encouraging_message"
+  "improvementAreas": ["Brief area 1", "Brief area 2"],
+  "nextWeekFocus": "Brief focus with data",
+  "motivationalMessage": "Brief encouraging message with numbers",
+  "weeklyHighlights": ["Brief highlight 1", "Brief highlight 2"],
+  "actualDataInsights": [
+    "Brief insight about calories",
+    "Brief insight about goals met",
+    "Brief insight about foods"
+  ]
 }`;
 
     try {
-      const result = await retryWithBackoff(() => model.generateContent([prompt]), 3, 500);
+      // Add specific generation config to limit response length
+      const generationConfig = {
+        maxOutputTokens: 600, // Limit response length for weekly
+        temperature: 0.3,     // Lower temperature for more consistent JSON
+      };
+      
+      const result = await retryWithBackoff(() => 
+        model.generateContent([prompt], { generationConfig }), 3, 500);
       const text = result.response.text();
       console.log('Weekly Analysis Response:', text);
 
       const insights = parseJsonResponse(text);
-      res.json(insights);
+      
+      // Validate and ensure required fields
+      const validatedInsights = {
+        consistencyScore: typeof insights.consistencyScore === 'number' ? insights.consistencyScore : Math.round((daysOnTrack / totalDays) * 100),
+        trendDirection: insights.trendDirection || 'stable',
+        strongestDay: insights.strongestDay || `Day with highest calories`,
+        weakestDay: insights.weakestDay || `Day with lowest calories`,
+        patterns: Array.isArray(insights.patterns) ? insights.patterns : [`${daysOnTrack}/${totalDays} days met calorie goals`],
+        weeklyGoalStatus: insights.weeklyGoalStatus || (daysOnTrack >= totalDays * 0.7 ? 'good' : 'needs-work'),
+        improvementAreas: Array.isArray(insights.improvementAreas) ? insights.improvementAreas : ['Consistency', 'Protein intake'],
+        nextWeekFocus: insights.nextWeekFocus || 'Focus on hitting daily goals consistently',
+        motivationalMessage: insights.motivationalMessage || `You averaged ${Math.round(avgCalories)} calories this week!`,
+        weeklyHighlights: Array.isArray(insights.weeklyHighlights) ? insights.weeklyHighlights : [`${daysOnTrack} days on track`, `${Math.round(avgCalories)} average calories`],
+        actualDataInsights: Array.isArray(insights.actualDataInsights) ? insights.actualDataInsights : [
+          `You averaged ${Math.round(avgCalories)} calories this week`,
+          `${daysOnTrack} out of ${totalDays} days met your goals`,
+          `Your average protein was ${Math.round(avgProtein)}g`
+        ]
+      };
+      
+      res.json(validatedInsights);
     } catch (parseError) {
       console.log('⚠️ Weekly AI response parsing failed, providing fallback insights');
       
@@ -545,7 +820,7 @@ Description: ${description}`;
     const text = result.response.text();
     console.log(`[Model: ${MODEL_ID}] Analyze-Text Raw Response:`, text);
 
-    res.json(parseJsonResponse(text));
+    res.json(parseSimpleJsonArray(text));
   } catch (error) {
     console.error(`Error in /api/analyze-text [model=${MODEL_ID}]:`, error);
     const status = error?.status === 401 ? 401 : error?.status === 429 ? 429 : error?.status === 503 ? 503 : 500;
@@ -586,7 +861,7 @@ Return only the JSON array, no other text.`;
     const text = result.response.text();
     console.log(`[Model: ${MODEL_ID}] Initial Analysis Raw Response:`, text);
 
-    res.json(parseJsonResponse(text));
+    res.json(parseSimpleJsonArray(text));
 
   } catch (error) {
     console.error(`Error in /analyze-image [model=${MODEL_ID}]:`, error);
